@@ -5,6 +5,7 @@ import SwiftData
 struct PriceSummaryView: View {
     @Query(sort: \Book.dateAdded, order: .reverse) private var books: [Book]
     @State private var lookupService = BookLookupService()
+    @State private var showPriceCheck = false
 
     private var booksWithPrices: [Book] {
         books.filter { $0.ebayLowestPrice != nil }
@@ -78,6 +79,19 @@ struct PriceSummaryView: View {
                 }
             }
             .navigationTitle("eBay Prices")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showPriceCheck = true
+                    } label: {
+                        Label("Price Check", systemImage: "barcode.viewfinder")
+                    }
+                }
+            }
+            .sheet(isPresented: $showPriceCheck) {
+                PriceCheckView()
+                    .presentationDragIndicator(.visible)
+            }
             .refreshable {
                 await refreshAllPrices()
             }
@@ -88,7 +102,9 @@ struct PriceSummaryView: View {
                         systemImage: "tag",
                         description: Text("Add books to your library to see pricing data.")
                     )
-                } else if !APIConfiguration.shared.ebayIsConfigured {
+                } else if !APIConfiguration.shared.ebayIsConfigured && booksWithPrices.isEmpty {
+                    // Only cover the list when there's truly nothing to show —
+                    // books can already carry prices from before keys were removed.
                     ContentUnavailableView(
                         "eBay Not Configured",
                         systemImage: "key",
@@ -118,9 +134,10 @@ struct PriceSummaryView: View {
             VStack(alignment: .trailing, spacing: 2) {
                 Text(formatPrice(book.ebayLowestPrice ?? 0))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.green)
 
-                if let lastUpdated = book.ebayPriceLastUpdated {
+                if let change = book.recentPriceChange {
+                    PriceDeltaBadge(change: change)
+                } else if let lastUpdated = book.ebayPriceLastUpdated {
                     Text(lastUpdated.formatted(.relative(presentation: .named)))
                         .font(.caption2)
                         .foregroundStyle(.tertiary)

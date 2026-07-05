@@ -68,6 +68,9 @@ struct WatchedBookDetailView: View {
                             Text("lowest")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
+                            if let change = book.recentPriceChange {
+                                PriceDeltaBadge(change: change)
+                            }
                         }
 
                         if let updated = book.ebayPriceLastUpdated {

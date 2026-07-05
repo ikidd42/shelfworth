@@ -173,6 +173,7 @@ struct BatchScannerSheet: View {
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var snapTargetItemId: UUID?  // which item we're snapping for (nil = new item)
+    @State private var ocrMissCount = 0
 
     var body: some View {
         NavigationStack {
@@ -223,6 +224,8 @@ struct BatchScannerSheet: View {
                     capturedImage = nil
                 }
             }
+            .sensoryFeedback(.impact(weight: .medium), trigger: model.totalCount)
+            .sensoryFeedback(.error, trigger: ocrMissCount)
         }
     }
 
@@ -368,13 +371,8 @@ struct BatchScannerSheet: View {
     // MARK: - Actions
 
     private func handleScannedCode(_ code: String) {
-        guard model.addBarcode(code) else { return }
-
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
-
-        let itemId = model.items.last!.id
-        lookupItem(itemId, code: code)
+        guard model.addBarcode(code), let item = model.items.last else { return }
+        lookupItem(item.id, code: code)
     }
 
     private func addManualISBN() {
@@ -382,9 +380,6 @@ struct BatchScannerSheet: View {
         guard !isbn.isEmpty else { return }
         model.addManualISBN(isbn)
         manualISBN = ""
-
-        let generator = UIImpactFeedbackGenerator(style: .light)
-        generator.impactOccurred()
 
         if let item = model.items.last {
             lookupItem(item.id, code: item.barcode)
@@ -408,8 +403,7 @@ struct BatchScannerSheet: View {
                     }
                 }
             } else {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.error)
+                ocrMissCount += 1
             }
         } catch {
             Logger.ocr.error("Batch scan OCR failed: \(error)")
@@ -446,6 +440,7 @@ struct BatchReviewSheet: View {
     @State private var showCamera = false
     @State private var capturedImage: UIImage?
     @State private var snapTargetItemId: UUID?
+    @State private var ocrMissCount = 0
 
     private var foundItems: [BatchScanModel.ScannedItem] {
         model.items.filter { if case .found = $0.state { return true }; return false }
@@ -500,6 +495,7 @@ struct BatchReviewSheet: View {
                     capturedImage = nil
                 }
             }
+            .sensoryFeedback(.error, trigger: ocrMissCount)
         }
     }
 
@@ -610,8 +606,7 @@ struct BatchReviewSheet: View {
                     }
                 }
             } else {
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.error)
+                ocrMissCount += 1
             }
         } catch {
             Logger.ocr.error("Batch review OCR failed: \(error)")

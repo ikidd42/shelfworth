@@ -4,12 +4,16 @@ An iOS app for cataloging a personal book collection and tracking what your book
 
 Point your camera at a barcode (or snap a photo of a title page), and the app looks the book up, downloads its cover and metadata, and tracks its lowest current eBay price over time. Share an eBay listing straight into the app to watch a book you don't own yet.
 
+| Library | Prices | Watchlist |
+|---|---|---|
+| ![Library grid](docs/screenshots/library.png) | ![eBay prices with change indicators](docs/screenshots/prices.png) | ![Watchlist](docs/screenshots/watchlist.png) |
+
 ## Features
 
 - **Barcode scanning** — single and batch modes built on `DataScannerViewController`, with ISBN-10 → ISBN-13 conversion and UPC fallback lookup
 - **Title-page OCR** — Vision framework text recognition with layout-aware parsing: text size and page position are used to guess which lines are the title and author
 - **Book metadata lookup** — Google Books with Open Library fallback, merged results, cover downloads
-- **eBay price tracking** — OAuth client-credentials flow against the eBay Browse API, progressively broader search strategies (ISBN → title+author → title), per-book price history charts (Swift Charts)
+- **eBay price tracking** — OAuth client-credentials flow against the eBay Browse API, progressively broader search strategies (ISBN → title+author → title), per-book price history charts (Swift Charts), and price-movement indicators ("↓ $3.50 since the price changed") derived from stored history
 - **Share extension** — share an eBay listing from Safari or the eBay app; the extension parses the item ID, hands it to the main app via an App Group container, and the app enriches it into a watched book (real listing title → book match → market price)
 - **Watchlist** — track prices for books you don't own; graduate them into your library with price history intact
 - **Price check mode** — scan a book in a store and see its eBay price without adding it
@@ -45,6 +49,8 @@ Notes on the design:
 
 Open `Library.xcodeproj` in Xcode 16+ and run the **Library** scheme. The app builds and runs in the simulator; camera-based features (barcode scanning, OCR capture) need a physical device.
 
+To explore the UI without adding real books, launch a DEBUG build with the `-seedSampleData YES` argument (Edit Scheme → Run → Arguments) to populate a demo library.
+
 To use the share extension on a device, set your own App Group ID in both targets' Signing & Capabilities and update `SharedContainer.appGroupID` to match.
 
 ### API keys
@@ -59,10 +65,11 @@ xcodebuild -project Library.xcodeproj -scheme Library \
   -destination 'platform=iOS Simulator,name=iPhone 17' test
 ```
 
-58 unit tests (Swift Testing) cover the logic that's easy to get wrong:
+64 unit tests (Swift Testing) cover the logic that's easy to get wrong:
 
 - ISBN-10/13 check-digit validation, ISBN-10 → ISBN-13 conversion, scanned-barcode interpretation
 - eBay listing-title cleaning (edition/format/condition noise stripping)
+- Price-movement computation behind the delta badges
 - Duplicate detection (ISBN and title+author matching) against an in-memory SwiftData store
 - CSV/JSON export, including CSV escaping of commas, quotes, and newlines
 - eBay item-ID extraction from shared listing URLs

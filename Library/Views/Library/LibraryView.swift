@@ -10,7 +10,10 @@ struct LibraryView: View {
     @State private var filterStatus: ReadingStatus?
     @State private var sortOption: SortOption = .dateAdded
     @State private var showAddBook = false
+    @State private var showSettings = false
     @State private var viewMode: ViewMode = .grid
+    @State private var searchScope: SearchScope = .all
+    @Namespace private var zoomNamespace
 
     enum ViewMode: String, CaseIterable {
         case grid = "square.grid.2x2"
@@ -24,16 +27,33 @@ struct LibraryView: View {
         case rating = "Rating"
     }
 
+    enum SearchScope: String, CaseIterable {
+        case all = "All"
+        case title = "Title"
+        case author = "Author"
+        case isbn = "ISBN"
+    }
+
     var filteredBooks: [Book] {
         var result = books
 
         // Filter by search
         if !searchText.isEmpty {
             result = result.filter { book in
-                book.title.localizedCaseInsensitiveContains(searchText) ||
-                book.authors.localizedCaseInsensitiveContains(searchText) ||
-                (book.isbn ?? "").contains(searchText) ||
-                (book.isbn13 ?? "").contains(searchText)
+                switch searchScope {
+                case .all:
+                    book.title.localizedCaseInsensitiveContains(searchText) ||
+                    book.authors.localizedCaseInsensitiveContains(searchText) ||
+                    (book.isbn ?? "").contains(searchText) ||
+                    (book.isbn13 ?? "").contains(searchText)
+                case .title:
+                    book.title.localizedCaseInsensitiveContains(searchText)
+                case .author:
+                    book.authors.localizedCaseInsensitiveContains(searchText)
+                case .isbn:
+                    (book.isbn ?? "").contains(searchText) ||
+                    (book.isbn13 ?? "").contains(searchText)
+                }
             }
         }
 
@@ -68,7 +88,20 @@ struct LibraryView: View {
             }
             .navigationTitle("My Library")
             .searchable(text: $searchText, prompt: "Search books...")
+            .searchScopes($searchScope) {
+                ForEach(SearchScope.allCases, id: \.self) { scope in
+                    Text(scope.rawValue).tag(scope)
+                }
+            }
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Label("Settings", systemImage: "gearshape")
+                    }
+                }
+
                 ToolbarItem(placement: .primaryAction) {
                     Button {
                         showAddBook = true
@@ -80,60 +113,22 @@ struct LibraryView: View {
 
                 ToolbarItem(placement: .secondaryAction) {
                     Menu {
-                        // View mode
-                        Section("View") {
-                            ForEach(ViewMode.allCases, id: \.self) { mode in
-                                Button {
-                                    withAnimation { viewMode = mode }
-                                } label: {
-                                    Label(
-                                        mode == .grid ? "Grid" : "List",
-                                        systemImage: mode.rawValue
-                                    )
-                                }
-                            }
+                        Picker("View", selection: $viewMode.animation()) {
+                            Label("Grid", systemImage: "square.grid.2x2").tag(ViewMode.grid)
+                            Label("List", systemImage: "list.bullet").tag(ViewMode.list)
                         }
 
-                        // Sort
-                        Section("Sort By") {
+                        Picker("Sort by", selection: $sortOption) {
                             ForEach(SortOption.allCases, id: \.self) { option in
-                                Button {
-                                    sortOption = option
-                                } label: {
-                                    HStack {
-                                        Text(option.rawValue)
-                                        if sortOption == option {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
+                                Text(option.rawValue).tag(option)
                             }
                         }
 
-                        // Filter by status
-                        Section("Filter") {
-                            Button {
-                                filterStatus = nil
-                            } label: {
-                                HStack {
-                                    Text("All Books")
-                                    if filterStatus == nil {
-                                        Image(systemName: "checkmark")
-                                    }
-                                }
-                            }
-
+                        Picker("Filter", selection: $filterStatus) {
+                            Text("All Books").tag(ReadingStatus?.none)
                             ForEach(ReadingStatus.allCases) { status in
-                                Button {
-                                    filterStatus = status
-                                } label: {
-                                    HStack {
-                                        Label(status.rawValue, systemImage: status.systemImage)
-                                        if filterStatus == status {
-                                            Image(systemName: "checkmark")
-                                        }
-                                    }
-                                }
+                                Label(status.rawValue, systemImage: status.systemImage)
+                                    .tag(ReadingStatus?.some(status))
                             }
                         }
                     } label: {
@@ -143,6 +138,9 @@ struct LibraryView: View {
             }
             .sheet(isPresented: $showAddBook) {
                 AddBookView()
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
             }
         }
     }
@@ -162,7 +160,10 @@ struct LibraryView: View {
                 bookCountHeader
                     .listRowSeparator(.hidden)
                 ForEach(filteredBooks) { book in
-                    NavigationLink(destination: BookDetailView(book: book)) {
+                    NavigationLink(
+                        destination: BookDetailView(book: book)
+                            .zoomTransitionDestination(id: book.id, in: zoomNamespace)
+                    ) {
                         bookListRow(book)
                     }
                 }
@@ -196,10 +197,14 @@ struct LibraryView: View {
             spacing: 20
         ) {
             ForEach(filteredBooks) { book in
-                NavigationLink(destination: BookDetailView(book: book)) {
+                NavigationLink(
+                    destination: BookDetailView(book: book)
+                        .zoomTransitionDestination(id: book.id, in: zoomNamespace)
+                ) {
                     bookGridItem(book)
                 }
                 .buttonStyle(.plain)
+                .zoomTransitionSource(id: book.id, in: zoomNamespace)
                 .contextMenu {
                     bookContextMenu(book)
                 }

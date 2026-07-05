@@ -115,6 +115,7 @@ struct AddBookView: View {
                     Task { await handleScannedISBN(isbn) }
                 }
             }
+            .sensoryFeedback(.success, trigger: scannedISBN) { _, new in new != nil }
             .alert("Duplicate Book", isPresented: $showDuplicateAlert) {
                 Button("Add Copy") {
                     if let existing = duplicateBook {

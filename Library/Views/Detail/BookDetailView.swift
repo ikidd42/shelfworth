@@ -139,12 +139,33 @@ struct BookDetailView: View {
                             Image(systemName: star <= (book.rating ?? 0) ? "star.fill" : "star")
                                 .foregroundStyle(star <= (book.rating ?? 0) ? .yellow : .gray.opacity(0.4))
                                 .font(.title3)
+                                .symbolEffect(.bounce, value: star <= (book.rating ?? 0))
                         }
                     }
                 }
                 .padding(.top, 4)
             }
         }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 24)
+        .padding(.horizontal, 12)
+        .background {
+            if let data = book.coverImageData, let uiImage = UIImage(data: data) {
+                Image(uiImage: uiImage)
+                    .resizable()
+                    .scaledToFill()
+                    .blur(radius: 60, opaque: true)
+                    .opacity(0.35)
+                    .overlay {
+                        LinearGradient(
+                            colors: [.clear, Color(.systemBackground).opacity(0.9)],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                    }
+            }
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Quick Actions
@@ -166,6 +187,7 @@ struct BookDetailView: View {
                     VStack(spacing: 4) {
                         Image(systemName: status.systemImage)
                             .font(.title3)
+                            .symbolEffect(.bounce, value: book.readingStatusEnum == status)
                         Text(status.rawValue)
                             .font(.caption2)
                     }
@@ -217,6 +239,10 @@ struct BookDetailView: View {
                     Text("lowest available")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
+
+                    if let change = book.recentPriceChange {
+                        PriceDeltaBadge(change: change)
+                    }
                 }
 
                 if let lastUpdated = book.ebayPriceLastUpdated {

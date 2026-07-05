@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import TipKit
 import os
 
 /// Displays all watched books and their current eBay market prices.
@@ -11,9 +12,17 @@ struct WatchlistView: View {
     @State private var lookupService = BookLookupService()
     @State private var showAddSheet = false
 
+    private let shareTip = ShareToWatchlistTip()
+
     var body: some View {
         NavigationStack {
             List {
+                if !watchedBooks.isEmpty {
+                    TipView(shareTip)
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets())
+                }
+
                 // Summary card
                 if !watchedBooks.isEmpty {
                     Section {
@@ -99,8 +108,9 @@ struct WatchlistView: View {
                 if let price = book.ebayLowestPrice {
                     Text(formatPrice(price))
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.green)
-                    if let updated = book.ebayPriceLastUpdated {
+                    if let change = book.recentPriceChange {
+                        PriceDeltaBadge(change: change)
+                    } else if let updated = book.ebayPriceLastUpdated {
                         Text(updated.formatted(.relative(presentation: .named)))
                             .font(.caption2)
                             .foregroundStyle(.tertiary)
