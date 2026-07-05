@@ -136,7 +136,7 @@ struct PriceSummaryView: View {
                     .font(.subheadline.weight(.semibold))
 
                 if let change = book.recentPriceChange {
-                    PriceDeltaBadge(change: change)
+                    PriceDeltaBadge(change: change, perspective: .owning)
                 } else if let lastUpdated = book.ebayPriceLastUpdated {
                     Text(lastUpdated.formatted(.relative(presentation: .named)))
                         .font(.caption2)

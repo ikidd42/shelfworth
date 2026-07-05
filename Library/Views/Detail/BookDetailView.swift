@@ -241,7 +241,7 @@ struct BookDetailView: View {
                         .foregroundStyle(.secondary)
 
                     if let change = book.recentPriceChange {
-                        PriceDeltaBadge(change: change)
+                        PriceDeltaBadge(change: change, perspective: .owning)
                     }
                 }
 
