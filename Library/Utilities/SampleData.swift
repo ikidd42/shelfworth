@@ -1,6 +1,7 @@
 #if DEBUG
 import Foundation
 import SwiftData
+import UIKit
 
 /// Seeds a demo library when the app is launched with `-seedSampleData YES`
 /// (Edit Scheme → Arguments, or `xcrun simctl launch ... -seedSampleData YES`).
@@ -77,6 +78,7 @@ enum SampleData {
             categories: "Classics", readingStatus: .read
         )
         austen.rating = 5
+        austen.coverImageData = syntheticCover()
         austen.dateStartedReading = daysAgo(200)
         austen.dateFinishedReading = daysAgo(170)
 
@@ -122,6 +124,22 @@ enum SampleData {
 
         context.insert(watchedRowling)
         context.insert(watchedKing)
+    }
+
+    /// A simple painted cover so demo data exercises the cover-art paths
+    /// (thumbnailing, ink-matched endpapers) without bundling an image.
+    private static func syntheticCover() -> Data? {
+        let size = CGSize(width: 600, height: 900)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            UIColor(red: 0.13, green: 0.32, blue: 0.42, alpha: 1).setFill()   // deep teal
+            ctx.fill(CGRect(origin: .zero, size: size))
+            UIColor(red: 0.92, green: 0.86, blue: 0.72, alpha: 1).setFill()   // cream band
+            ctx.fill(CGRect(x: 0, y: 330, width: 600, height: 240))
+            UIColor(red: 0.76, green: 0.44, blue: 0.28, alpha: 1).setFill()   // terracotta sun
+            ctx.cgContext.fillEllipse(in: CGRect(x: 210, y: 90, width: 180, height: 180))
+        }
+        return image.jpegData(compressionQuality: 0.85)
     }
 }
 #endif

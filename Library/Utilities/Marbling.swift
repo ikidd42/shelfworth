@@ -62,6 +62,22 @@ enum Marbling {
 
         /// Drop/band ink order: vein (darkest), mid, paper, accent.
         var inks: [(Double, Double, Double)] { [vein, mid, base, accent] }
+
+        var palette: Palette { Palette(paper: base, inks: inks, gilt: gilt) }
+    }
+
+    /// A marbling ink set. `inks` is ordered vein (darkest), mid, light, accent.
+    nonisolated struct Palette: Sendable {
+        var paper: (Double, Double, Double)
+        var inks: [(Double, Double, Double)]
+        var gilt: (Double, Double, Double)
+
+        /// Stable cache identity for the palette's colors.
+        var fingerprint: String {
+            ([paper] + inks + [gilt])
+                .map { String(format: "%.3f,%.3f,%.3f", $0.0, $0.1, $0.2) }
+                .joined(separator: "|")
+        }
     }
 
     nonisolated enum Pattern: String, CaseIterable {
@@ -79,14 +95,11 @@ enum Marbling {
         return hash
     }
 
-    /// About two in five titles get a marbled binding (a real shelf mixes
-    /// plain cloth and half-leather volumes, leather-look spines recurring
-    /// often enough to read as a collector's shelf rather than a rarity).
-    nonisolated static func kind(forTitle title: String) -> Kind? {
-        let seed = stableSeed(title)
-        guard seed % 5 < 2 else { return nil }
+    /// Every generated cover gets a marbled binding; the colorway is a
+    /// stable per-title choice so shelves mix all three.
+    nonisolated static func kind(forTitle title: String) -> Kind {
         let kinds = Kind.allCases
-        return kinds[Int((seed / 5) % UInt64(kinds.count))]
+        return kinds[Int(stableSeed(title) % UInt64(kinds.count))]
     }
 
     /// Board pattern for a book's cover: stone-heavy, with some chevron
@@ -104,9 +117,15 @@ enum Marbling {
     /// use. `size` is in points; the bitmap is rendered at 2×, capped.
     nonisolated static func image(kind: Kind, pattern: Pattern = .stone,
                                   seed: UInt64, size: CGSize) async -> UIImage {
+        await image(palette: kind.palette, pattern: pattern, seed: seed, size: size)
+    }
+
+    /// Renders with a custom ink set (e.g. one matched to a cover image).
+    nonisolated static func image(palette: Palette, pattern: Pattern = .stone,
+                                  seed: UInt64, size: CGSize) async -> UIImage {
         let w = max(8, min(512, Int(size.width * 2)))
         let h = max(8, min(512, Int(size.height * 2)))
-        let key = "\(kind.rawValue)-\(pattern.rawValue)-\(seed)-\(w)x\(h)" as NSString
+        let key = "\(palette.fingerprint)-\(pattern.rawValue)-\(seed)-\(w)x\(h)" as NSString
 
         if let hit = cache.object(forKey: key) { return hit }
 
@@ -117,12 +136,79 @@ enum Marbling {
         let sheetH = size.height * 2.2
 
         let rendered = await Task.detached(priority: .userInitiated) {
-            render(kind: kind, pattern: pattern, seed: seed,
+            render(palette: palette, pattern: pattern, seed: seed,
                    width: w, height: h, sheetW: sheetW, sheetH: sheetH)
         }.value
 
         cache.setObject(rendered, forKey: key)
         return rendered
+    }
+
+    // MARK: - Cover-matched palettes
+
+    /// Builds an ink set from a cover image's dominant colors, so a book's
+    /// endpaper marbles in the same hues as its jacket. Deterministic for a
+    /// given image. Returns nil if the data can't be decoded.
+    nonisolated static func palette(matchingCover data: Data) -> Palette? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let cg = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 32,
+                  kCGImageSourceCreateThumbnailWithTransform: true
+              ] as CFDictionary) else { return nil }
+
+        // Read pixels through a known-format context
+        let w = cg.width, h = cg.height
+        var buf = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(data: &buf, width: w, height: h,
+                                  bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+        else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        // Histogram in a coarse RGB grid (4 levels per channel)
+        var count = [Int](repeating: 0, count: 64)
+        var sums = [(Double, Double, Double)](repeating: (0, 0, 0), count: 64)
+        for i in stride(from: 0, to: w * h * 4, by: 4) {
+            let r = Double(buf[i]) / 255, g = Double(buf[i + 1]) / 255, b = Double(buf[i + 2]) / 255
+            let bucket = min(3, Int(r * 4)) * 16 + min(3, Int(g * 4)) * 4 + min(3, Int(b * 4))
+            count[bucket] += 1
+            sums[bucket] = (sums[bucket].0 + r, sums[bucket].1 + g, sums[bucket].2 + b)
+        }
+
+        // Pick up to four dominant, mutually distinct colors
+        let ranked = count.indices.filter { count[$0] > 0 }.sorted { count[$0] > count[$1] }
+        var picked: [(Double, Double, Double)] = []
+        for bucket in ranked where picked.count < 4 {
+            let n = Double(count[bucket])
+            let c = (sums[bucket].0 / n, sums[bucket].1 / n, sums[bucket].2 / n)
+            let distinct = picked.allSatisfy { p in
+                let d = (p.0 - c.0) * (p.0 - c.0) + (p.1 - c.1) * (p.1 - c.1) + (p.2 - c.2) * (p.2 - c.2)
+                return d > 0.045
+            }
+            if distinct { picked.append(c) }
+        }
+        guard !picked.isEmpty else { return nil }
+
+        // Pad by shading the first pick, then order dark → mid → light + accent
+        while picked.count < 4 {
+            let base = picked[0]
+            let t = picked.count == 1 ? 0.45 : (picked.count == 2 ? 1.35 : 0.75)
+            picked.append((min(1, base.0 * t), min(1, base.1 * t), min(1, base.2 * t)))
+        }
+        func luma(_ c: (Double, Double, Double)) -> Double { 0.299 * c.0 + 0.587 * c.1 + 0.114 * c.2 }
+        let byLuma = picked.sorted { luma($0) < luma($1) }
+        let ivory = (0.93, 0.89, 0.78)
+        // Soften toward the app's paper tone so image inks sit in the language
+        func settle(_ c: (Double, Double, Double)) -> (Double, Double, Double) {
+            (c.0 + (ivory.0 - c.0) * 0.1, c.1 + (ivory.1 - c.1) * 0.1, c.2 + (ivory.2 - c.2) * 0.1)
+        }
+        return Palette(
+            paper: ivory,
+            inks: [settle(byLuma[0]), settle(byLuma[1]), settle(byLuma[3]), settle(byLuma[2])],
+            gilt: (0.86, 0.69, 0.38)
+        )
     }
 
     // MARK: - Deterministic RNG (SplitMix64)
@@ -253,7 +339,7 @@ enum Marbling {
 
     // MARK: - Render
 
-    nonisolated private static func render(kind: Kind, pattern: Pattern, seed: UInt64,
+    nonisolated private static func render(palette: Palette, pattern: Pattern, seed: UInt64,
                                            width w: Int, height h: Int,
                                            sheetW: Double, sheetH: Double) -> UIImage {
         var rng = SplitMix(seed: seed)
@@ -264,9 +350,9 @@ enum Marbling {
         }
         let reversedOps = Array(ops.reversed())
         let banded = pattern != .stone
-        let inks = kind.inks
-        let paper = kind.base
-        let gilt = kind.gilt
+        let inks = palette.inks
+        let paper = palette.paper
+        let gilt = palette.gilt
         let unitsPerPixelX = sheetW / Double(w)
         let unitsPerPixelY = sheetH / Double(h)
         // Stone gets a stronger hand-made wobble; combed patterns stay crisp.

@@ -109,14 +109,21 @@ struct BookDetailView: View {
             if shouldRefreshPrice {
                 await fetchEbayPrice()
             }
-            // Marbled endpaper for books with generated covers
-            if book.coverImageData == nil && book.coverImageURL == nil {
-                let kind = Marbling.kind(forTitle: book.title) ?? .forest
+            // Marbled endpaper for every book; when the book has cover art,
+            // the inks are extracted from the jacket so the sheet matches it.
+            let seed = Marbling.stableSeed(book.title)
+            let size = CGSize(width: 420, height: 300)
+            if let data = book.coverImageData,
+               let matched = await Task.detached(priority: .userInitiated, operation: {
+                   Marbling.palette(matchingCover: data)
+               }).value {
                 heroMarble = await Marbling.image(
-                    kind: kind,
-                    pattern: .bouquet,   // endpapers get the ornate sheet
-                    seed: Marbling.stableSeed(book.title),
-                    size: CGSize(width: 420, height: 300)
+                    palette: matched, pattern: .bouquet, seed: seed, size: size
+                )
+            } else {
+                heroMarble = await Marbling.image(
+                    kind: Marbling.kind(forTitle: book.title),
+                    pattern: .bouquet, seed: seed, size: size
                 )
             }
         }
@@ -162,14 +169,8 @@ struct BookDetailView: View {
         .padding(.horizontal, 12)
         .background {
             ZStack {
-                if let data = book.coverImageData, let uiImage = UIImage(data: data) {
-                    Image(uiImage: uiImage)
-                        .resizable()
-                        .scaledToFill()
-                        .blur(radius: 70, opaque: true)
-                        .opacity(0.30)
-                } else if let heroMarble {
-                    // Marbled endpaper behind books with generated covers
+                if let heroMarble {
+                    // Marbled endpaper, ink-matched to the cover when one exists
                     Image(uiImage: heroMarble)
                         .resizable()
                         .scaledToFill()

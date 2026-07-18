@@ -23,16 +23,8 @@ struct MarblingTests {
         }
     }
 
-    @Test func marbledShareOfShelfIsRoughlyTwoInFive() {
-        let titles = (0..<250).map { "Volume \($0)" }
-        let marbled = titles.compactMap { Marbling.kind(forTitle: $0) }
-        let share = Double(marbled.count) / Double(titles.count)
-        // seed % 5 < 2 targets 40%; allow slack for hash distribution
-        #expect(share > 0.25 && share < 0.55, "marbled share was \(share)")
-    }
-
     @Test func allColorwaysAppearAcrossACorpus() {
-        let kinds = Set((0..<250).compactMap { Marbling.kind(forTitle: "Volume \($0)") })
+        let kinds = Set((0..<250).map { Marbling.kind(forTitle: "Volume \($0)") })
         #expect(kinds == Set(Marbling.Kind.allCases))
     }
 
@@ -80,5 +72,46 @@ struct MarblingTests {
         let stone = await Marbling.image(kind: .crimson, pattern: .stone, seed: 5, size: size)
         let nonpareil = await Marbling.image(kind: .crimson, pattern: .nonpareil, seed: 5, size: size)
         #expect(stone.pngData() != nonpareil.pngData())
+    }
+
+    // MARK: - Cover-matched palettes
+
+    @MainActor
+    private func syntheticCover(_ top: UIColor, _ bottom: UIColor) -> Data {
+        let size = CGSize(width: 120, height: 180)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        let image = renderer.image { ctx in
+            top.setFill()
+            ctx.fill(CGRect(x: 0, y: 0, width: 120, height: 90))
+            bottom.setFill()
+            ctx.fill(CGRect(x: 0, y: 90, width: 120, height: 90))
+        }
+        return image.pngData()!
+    }
+
+    @MainActor
+    @Test func extractsDominantInksFromCoverArt() throws {
+        let data = syntheticCover(
+            UIColor(red: 0.1, green: 0.3, blue: 0.5, alpha: 1),   // dark blue
+            UIColor(red: 0.9, green: 0.8, blue: 0.6, alpha: 1)    // cream
+        )
+        let palette = try #require(Marbling.palette(matchingCover: data))
+
+        // Darkest ink should land near the dark blue (blue-dominant, dark)
+        let vein = palette.inks[0]
+        #expect(vein.2 > vein.0, "vein should stay blue-dominant, got \(vein)")
+        #expect(vein.0 + vein.1 + vein.2 < 1.6, "vein should be dark, got \(vein)")
+    }
+
+    @MainActor
+    @Test func matchedPaletteIsDeterministic() throws {
+        let data = syntheticCover(.systemIndigo, .systemOrange)
+        let first = try #require(Marbling.palette(matchingCover: data))
+        let second = try #require(Marbling.palette(matchingCover: data))
+        #expect(first.fingerprint == second.fingerprint)
+    }
+
+    @Test func rejectsUndecodableCoverData() {
+        #expect(Marbling.palette(matchingCover: Data([0x00, 0x01, 0x02])) == nil)
     }
 }

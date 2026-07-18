@@ -13,12 +13,12 @@ struct CoverArtView: View {
 
     /// Lazily rendered marbled sheet for half-leather bindings.
     @State private var marble: UIImage?
+    /// Downsampled cover bitmap for books with real cover art.
+    @State private var thumbnail: UIImage?
     @Environment(\.colorScheme) private var colorScheme
 
-    /// Roughly two titles in five get a half-leather marbled binding;
-    /// the rest stay full cloth. Stable per title.
-    private var marbledKind: Marbling.Kind? {
-        Marbling.kind(forTitle: title)
+    private var thumbnailKey: String {
+        "\(title)-\(imageData?.count ?? 0)"
     }
 
     var body: some View {
@@ -30,8 +30,17 @@ struct CoverArtView: View {
                 BookShape(spine: spineWidth)
                     .strokeBorder(.white.opacity(0.18), lineWidth: 0.5)
             }
+            .compositingGroup()   // flatten once so the shadows are cheap
             .shadow(color: .black.opacity(0.28), radius: 8, x: 0, y: 4)
             .shadow(color: .black.opacity(0.12), radius: 2, x: 0, y: 1)
+            .task(id: thumbnailKey) {
+                guard let imageData else { return }
+                thumbnail = await CoverThumbnail.image(
+                    data: imageData,
+                    cacheKey: thumbnailKey,
+                    maxPixel: max(width, height) * 3
+                )
+            }
     }
 
     /// The spine takes ~7% of the cover width.
@@ -39,11 +48,14 @@ struct CoverArtView: View {
 
     @ViewBuilder
     private var coverContent: some View {
-        if let imageData,
-           let uiImage = UIImage(data: imageData) {
-            Image(uiImage: uiImage)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
+        if imageData != nil {
+            if let thumbnail {
+                Image(uiImage: thumbnail)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+            } else {
+                Rectangle().fill(Theme.well)   // brief flash while decoding
+            }
         } else if let imageURL,
                   let url = URL(string: imageURL) {
             AsyncImage(url: url) { phase in
@@ -96,13 +108,13 @@ struct CoverArtView: View {
         .allowsHitTesting(false)
     }
 
-    /// Generated placeholder when no image is available: half-leather with
-    /// marbled boards for some books, full cloth for the rest. Row-size
-    /// thumbnails always use cloth — marble reads as mud below ~64pt.
+    /// Generated placeholder when no image is available: every shelf-size
+    /// cover gets a half-leather marbled binding. Row-size thumbnails use
+    /// cloth — marble reads as mud below ~64pt.
     @ViewBuilder
     private var placeholderCover: some View {
-        if let kind = marbledKind, width >= 64 {
-            halfLeatherCover(kind: kind)
+        if width >= 64 {
+            halfLeatherCover(kind: Marbling.kind(forTitle: title))
         } else {
             clothCover
         }

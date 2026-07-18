@@ -140,12 +140,16 @@ struct LibraryView: View {
                 SettingsView()
             }
             .task {
-                // Launch with `-openFirstBook YES` in DEBUG builds to push the
-                // first book's detail page (used for simulator screenshots).
+                // DEBUG launch args for simulator screenshots:
+                // `-openFirstBook YES` pushes the first book's detail page;
+                // `-openBook <title prefix>` pushes a specific book.
                 #if DEBUG
-                if UserDefaults.standard.bool(forKey: "openFirstBook"),
-                   navigationPath.isEmpty,
-                   let first = books.first {
+                guard navigationPath.isEmpty else { return }
+                if let prefix = UserDefaults.standard.string(forKey: "openBook"),
+                   let match = books.first(where: { $0.title.hasPrefix(prefix) }) {
+                    navigationPath.append(match)
+                } else if UserDefaults.standard.bool(forKey: "openFirstBook"),
+                          let first = books.first {
                     navigationPath.append(first)
                 }
                 #endif
@@ -249,16 +253,10 @@ struct LibraryView: View {
                     bookGridItem(book)
                 }
                 .buttonStyle(.plain)
-                .zoomTransitionSource(id: book.id, in: zoomNamespace)
                 .contextMenu {
                     bookContextMenu(book)
                 }
-                .scrollTransition(.interactive.threshold(.visible(0.1))) { content, phase in
-                    content
-                        .opacity(phase.isIdentity ? 1 : 0.4)
-                        .scaleEffect(phase.isIdentity ? 1 : 0.94)
-                        .offset(y: phase.isIdentity ? 0 : 14)
-                }
+                .zoomTransitionSource(id: book.id, in: zoomNamespace)
             }
         }
         .padding()
