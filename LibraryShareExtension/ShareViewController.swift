@@ -127,7 +127,7 @@ class ShareViewController: UIViewController {
                 }
             )
         )
-        hostingController.view.backgroundColor = .systemBackground
+        hostingController.view.backgroundColor = .clear
         addChild(hostingController)
         view.addSubview(hostingController.view)
         hostingController.view.translatesAutoresizingMaskIntoConstraints = false
