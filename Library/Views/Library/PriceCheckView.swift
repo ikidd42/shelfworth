@@ -60,7 +60,7 @@ struct PriceCheckView: View {
 
                     if let error = errorMessage {
                         Label(error, systemImage: "exclamationmark.triangle")
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.brass)
                             .font(.subheadline)
                             .padding(.horizontal)
                     }
@@ -76,6 +76,7 @@ struct PriceCheckView: View {
                 }
                 .padding(.vertical)
             }
+            .background(Theme.canvas.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
@@ -134,20 +135,26 @@ struct PriceCheckView: View {
             HStack(spacing: 12) {
                 Image(systemName: "barcode.viewfinder")
                     .font(.system(size: 28))
+                    .foregroundStyle(Theme.green)
                 VStack(alignment: .leading) {
                     Text("Scan Barcode")
-                        .font(.headline)
+                        .font(Theme.serif(17, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
                     Text("Quick price lookup")
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                 }
                 Spacer()
                 Image(systemName: "chevron.right")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
             .padding()
-            .background(Color.blue.opacity(0.1))
+            .background(Theme.green.opacity(0.10))
             .clipShape(RoundedRectangle(cornerRadius: 12))
+            .overlay {
+                RoundedRectangle(cornerRadius: 12)
+                    .strokeBorder(Theme.green.opacity(0.25), lineWidth: 1)
+            }
         }
         .buttonStyle(.plain)
         .padding(.horizontal)
@@ -172,8 +179,8 @@ struct PriceCheckView: View {
             } label: {
                 Image(systemName: "magnifyingglass")
                     .padding(8)
-                    .background(Color.blue)
-                    .foregroundStyle(.white)
+                    .background(Theme.green)
+                    .foregroundStyle(Theme.card)
                     .clipShape(Circle())
             }
             .disabled(manualTitle.trimmingCharacters(in: .whitespaces).isEmpty && manualAuthor.trimmingCharacters(in: .whitespaces).isEmpty)
@@ -206,7 +213,7 @@ struct PriceCheckView: View {
                             image.resizable().aspectRatio(contentMode: .fill)
                         default:
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color(.systemGray5))
+                                .fill(Theme.well)
                                 .overlay { Image(systemName: "book.closed").foregroundStyle(.secondary) }
                         }
                     }
@@ -215,27 +222,27 @@ struct PriceCheckView: View {
                     .shadow(radius: 2)
                 } else {
                     RoundedRectangle(cornerRadius: 6)
-                        .fill(Color(.systemGray5))
+                        .fill(Theme.well)
                         .frame(width: 70, height: 105)
                         .overlay { Image(systemName: "book.closed").foregroundStyle(.secondary) }
                 }
 
                 VStack(alignment: .leading, spacing: 4) {
                     Text(book.title)
-                        .font(.headline)
+                        .font(Theme.serif(17, weight: .semibold))
                         .lineLimit(3)
                     Text(book.authors)
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
                     if let isbn = book.isbn13 ?? book.isbn {
                         Text("ISBN: \(isbn)")
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                     if let publisher = book.publisher {
                         Text(publisher)
                             .font(.caption)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
 
@@ -258,10 +265,10 @@ struct PriceCheckView: View {
                     HStack(alignment: .firstTextBaseline) {
                         Text("eBay Lowest:")
                             .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(Theme.inkSecondary)
                         Text(ebay.formattedPrice)
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundStyle(.green)
+                            .font(Theme.display(28))
+                            .foregroundStyle(Theme.brass)
                     }
 
                     if let condition = ebay.condition {
@@ -320,9 +327,13 @@ struct PriceCheckView: View {
             }
         }
         .padding()
-        .background(Color(.systemBackground))
+        .background(Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 16))
-        .shadow(color: .black.opacity(0.1), radius: 8, y: 2)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(Theme.rule.opacity(0.8), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.08), radius: 10, y: 4)
         .padding(.horizontal)
     }
 
@@ -331,8 +342,7 @@ struct PriceCheckView: View {
     private var recentChecksSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("Recent Checks")
-                    .font(.headline)
+                SectionEyebrow(text: "Recent checks")
                 Spacer()
                 Button("Clear") {
                     withAnimation { recentChecks.removeAll() }
@@ -349,14 +359,14 @@ struct PriceCheckView: View {
                             case .success(let image):
                                 image.resizable().aspectRatio(contentMode: .fill)
                             default:
-                                Color(.systemGray5)
+                                Theme.well
                             }
                         }
                         .frame(width: 35, height: 52)
                         .clipShape(RoundedRectangle(cornerRadius: 4))
                     } else {
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(.systemGray5))
+                            .fill(Theme.well)
                             .frame(width: 35, height: 52)
                     }
 
@@ -374,11 +384,11 @@ struct PriceCheckView: View {
 
                     if let price = check.ebayPrice {
                         Text(formatPrice(price))
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.green)
+                            .font(.subheadline.weight(.semibold).monospacedDigit())
+                            .foregroundStyle(Theme.ink)
                     } else {
                         Text("—")
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 }
                 .padding(.horizontal)

@@ -25,7 +25,7 @@ struct ReadingStatsView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: 24) {
+                VStack(spacing: 20) {
                     // Year picker
                     if yearsWithActivity.count > 1 {
                         Picker("Year", selection: $selectedYear) {
@@ -34,7 +34,6 @@ struct ReadingStatsView: View {
                             }
                         }
                         .pickerStyle(.segmented)
-                        .padding(.horizontal)
                     }
 
                     // Summary cards
@@ -43,20 +42,17 @@ struct ReadingStatsView: View {
                     // Monthly chart
                     monthlyChart
 
-                    Divider().padding(.horizontal)
-
                     // Reading speed stats
                     readingSpeedSection
-
-                    Divider().padding(.horizontal)
 
                     // All-time stats
                     allTimeSection
 
-                    Spacer(minLength: 40)
+                    Spacer(minLength: 24)
                 }
-                .padding(.vertical)
+                .padding()
             }
+            .background(Theme.canvas.ignoresSafeArea())
             .navigationTitle("Reading Stats")
         }
     }
@@ -71,169 +67,209 @@ struct ReadingStatsView: View {
             statCard(
                 title: "Read",
                 value: "\(booksReadThisYear)",
-                subtitle: "this year",
+                subtitle: "finished this year",
                 icon: "checkmark.circle.fill",
-                color: .green
+                color: Theme.gain
             )
 
             statCard(
-                title: "Currently Reading",
+                title: "Reading",
                 value: "\(currentlyReading)",
                 subtitle: "in progress",
                 icon: "book.fill",
-                color: .blue
+                color: Theme.green
             )
 
             statCard(
                 title: "Want to Read",
                 value: "\(wantToRead)",
                 subtitle: "in backlog",
-                icon: "bookmark",
-                color: .orange
+                icon: "bookmark.fill",
+                color: Theme.brass
             )
 
             statCard(
-                title: "Library Total",
+                title: "Library",
                 value: "\(books.count)",
-                subtitle: "books",
-                icon: "books.vertical",
-                color: .purple
+                subtitle: "volumes total",
+                icon: "books.vertical.fill",
+                color: Theme.inkSecondary
             )
         }
-        .padding(.horizontal)
     }
 
     private func statCard(title: String, value: String, subtitle: String, icon: String, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
             HStack {
                 Image(systemName: icon)
+                    .font(.subheadline.weight(.semibold))
                     .foregroundStyle(color)
-                    .font(.title3)
+                    .frame(width: 30, height: 30)
+                    .background(color.opacity(0.12))
+                    .clipShape(Circle())
                 Spacer()
             }
+
             Text(value)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
-            Text(subtitle)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(Theme.display(32))
+                .foregroundStyle(Theme.ink)
+
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Theme.ink)
+                Text(subtitle)
+                    .font(.caption2)
+                    .foregroundStyle(Theme.inkSecondary)
+            }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .cardStyle()
     }
 
     // MARK: - Monthly Chart
 
     private var monthlyChart: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Books Read by Month")
-                .font(.headline)
-                .padding(.horizontal)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                SectionEyebrow(text: "Finished by month")
+                Spacer()
+                if booksReadThisYear > 0 {
+                    Text(String(selectedYear))
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(Theme.inkTertiary)
+                }
+            }
 
             if booksReadThisYear > 0 {
                 Chart {
+                    let bestMonthCount = monthlyData.map(\.count).max() ?? 0
                     ForEach(monthlyData, id: \.month) { item in
                         BarMark(
                             x: .value("Month", item.label),
                             y: .value("Books", item.count)
                         )
-                        .foregroundStyle(.green.gradient)
+                        .foregroundStyle(
+                            bestMonthCount > 1 && item.count == bestMonthCount
+                            ? Theme.brass.gradient
+                            : Theme.green.gradient
+                        )
                         .cornerRadius(4)
                     }
                 }
                 .chartYAxis {
                     AxisMarks(preset: .aligned) { _ in
-                        AxisGridLine()
+                        AxisGridLine().foregroundStyle(Theme.rule)
                         AxisValueLabel()
+                            .foregroundStyle(Theme.inkSecondary)
+                    }
+                }
+                .chartXAxis {
+                    AxisMarks { _ in
+                        AxisValueLabel()
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
                 .frame(height: 200)
-                .padding(.horizontal)
             } else {
-                Text("No books finished in \(String(selectedYear)) yet")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 40)
+                VStack(spacing: 10) {
+                    Image(systemName: "books.vertical")
+                        .font(.title2)
+                        .foregroundStyle(Theme.inkTertiary)
+                    Text("No books finished in \(String(selectedYear)) yet")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 36)
             }
         }
+        .cardStyle()
     }
 
     // MARK: - Reading Speed
 
     private var readingSpeedSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Reading Pace")
-                .font(.headline)
-                .padding(.horizontal)
+        VStack(alignment: .leading, spacing: 4) {
+            SectionEyebrow(text: "Reading pace")
+                .padding(.bottom, 10)
 
-            VStack(spacing: 8) {
-                if let avgDays = averageReadingDays {
-                    readingSpeedRow(label: "Average reading time", value: formatDays(avgDays))
-                }
-                if let fastest = fastestRead {
-                    readingSpeedRow(label: "Fastest read", value: "\(fastest.title) (\(formatDays(readingDays(for: fastest) ?? 0)))")
-                }
-                if let longest = longestRead {
-                    readingSpeedRow(label: "Longest read", value: "\(longest.title) (\(formatDays(readingDays(for: longest) ?? 0)))")
-                }
-
-                if averageReadingDays == nil {
-                    Text("Mark books as \"Reading\" then \"Read\" to track reading pace")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal)
-                }
+            if let avgDays = averageReadingDays {
+                readingSpeedRow(label: "Average reading time", value: formatDays(avgDays))
+                rowSeparator
             }
-            .padding(.horizontal)
+            if let fastest = fastestRead {
+                readingSpeedRow(label: "Fastest read", value: "\(fastest.title) (\(formatDays(readingDays(for: fastest) ?? 0)))")
+                rowSeparator
+            }
+            if let longest = longestRead {
+                readingSpeedRow(label: "Longest read", value: "\(longest.title) (\(formatDays(readingDays(for: longest) ?? 0)))")
+            }
+
+            if averageReadingDays == nil {
+                Text("Mark books as “Reading” then “Read” to track your pace.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .padding(.vertical, 8)
+            }
         }
+        .cardStyle()
     }
 
     private func readingSpeedRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer()
             Text(value)
                 .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
         }
+        .padding(.vertical, 10)
     }
 
     // MARK: - All-Time
 
     private var allTimeSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("All Time")
-                .font(.headline)
-                .padding(.horizontal)
+        VStack(alignment: .leading, spacing: 4) {
+            SectionEyebrow(text: "All time")
+                .padding(.bottom, 10)
 
-            VStack(spacing: 8) {
-                allTimeRow(label: "Total books read", value: "\(totalBooksRead)")
-                allTimeRow(label: "Total pages read", value: totalPagesRead > 0 ? "\(totalPagesRead)" : "—")
+            allTimeRow(label: "Total books read", value: "\(totalBooksRead)")
+            rowSeparator
+            allTimeRow(label: "Total pages read", value: totalPagesRead > 0 ? totalPagesRead.formatted() : "—")
 
-                if let topMonth = mostProductiveMonth {
-                    allTimeRow(
-                        label: "Best month",
-                        value: "\(topMonth.label) (\(topMonth.count) book\(topMonth.count == 1 ? "" : "s"))"
-                    )
-                }
+            if let topMonth = mostProductiveMonth {
+                rowSeparator
+                allTimeRow(
+                    label: "Best month",
+                    value: "\(topMonth.label) (\(topMonth.count) book\(topMonth.count == 1 ? "" : "s"))"
+                )
             }
-            .padding(.horizontal)
         }
+        .cardStyle()
     }
 
     private func allTimeRow(label: String, value: String) -> some View {
         HStack {
             Text(label)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Spacer()
             Text(value)
                 .font(.subheadline.weight(.medium))
+                .foregroundStyle(Theme.ink)
         }
+        .padding(.vertical, 10)
+    }
+
+    private var rowSeparator: some View {
+        Rectangle()
+            .fill(Theme.rule)
+            .frame(height: 1)
     }
 
     // MARK: - Data Calculations

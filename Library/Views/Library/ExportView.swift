@@ -65,6 +65,8 @@ struct ExportView: View {
                 }
             }
             .navigationTitle("Export Library")
+            .scrollContentBackground(.hidden)
+            .background(Theme.canvas.ignoresSafeArea())
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

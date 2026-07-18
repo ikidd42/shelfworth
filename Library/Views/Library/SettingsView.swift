@@ -162,6 +162,8 @@ struct SettingsView: View {
                 }
             }
             .navigationTitle("Settings")
+            .scrollContentBackground(.hidden)
+            .background(Theme.canvas.ignoresSafeArea())
             .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItemGroup(placement: .keyboard) {
@@ -193,11 +195,11 @@ struct SettingsView: View {
         switch result {
         case .success(let message):
             Label(message, systemImage: "checkmark.circle.fill")
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.gain)
                 .font(.subheadline)
         case .failure(let message):
             Label(message, systemImage: "xmark.circle.fill")
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.loss)
                 .font(.subheadline)
         }
     }

@@ -82,6 +82,7 @@ struct AddBookView: View {
             }
             .navigationTitle("Add a Book")
             .navigationBarTitleDisplayMode(.inline)
+            .background(Theme.canvas.ignoresSafeArea())
             .onTapGesture {
                 UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
             }
@@ -151,15 +152,15 @@ struct AddBookView: View {
         VStack(spacing: 24) {
             Image(systemName: "barcode.viewfinder")
                 .font(.system(size: 80))
-                .foregroundStyle(.blue)
+                .foregroundStyle(Theme.green)
                 .padding(.top, 40)
 
             Text("Scan an ISBN Barcode")
-                .font(.title2.weight(.semibold))
+                .font(Theme.display(24))
 
             Text("Point your camera at the barcode on the back of a book to automatically look it up.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
@@ -191,7 +192,7 @@ struct AddBookView: View {
 
             if let error = lookupService.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.loss)
                     .font(.caption)
             }
 
@@ -205,15 +206,15 @@ struct AddBookView: View {
         VStack(spacing: 24) {
             Image(systemName: "text.viewfinder")
                 .font(.system(size: 80))
-                .foregroundStyle(.purple)
+                .foregroundStyle(Theme.brass)
                 .padding(.top, 40)
 
             Text("Snap the Title Page")
-                .font(.title2.weight(.semibold))
+                .font(Theme.display(24))
 
             Text("Take a photo of the book's title page and we'll extract the title and author to search for it.")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
 
@@ -226,7 +227,7 @@ struct AddBookView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.purple)
+            .tint(Theme.brass)
             .controlSize(.large)
             .padding(.horizontal, 40)
 
@@ -246,7 +247,7 @@ struct AddBookView: View {
 
             if let error = lookupService.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.loss)
                     .font(.caption)
             }
 
@@ -297,7 +298,7 @@ struct AddBookView: View {
             .disabled(editableOCRTitle.isEmpty && editableOCRAuthor.isEmpty)
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Theme.card)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .padding(.horizontal)
     }
@@ -340,7 +341,7 @@ struct AddBookView: View {
 
             if let error = lookupService.errorMessage {
                 Label(error, systemImage: "exclamationmark.triangle")
-                    .foregroundStyle(.red)
+                    .foregroundStyle(Theme.loss)
                     .font(.caption)
             }
 

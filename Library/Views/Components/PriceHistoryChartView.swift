@@ -31,7 +31,7 @@ struct PriceHistoryChartView: View {
             } else {
                 Text("No price history yet")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             if sortedEntries.count >= 2 {
@@ -47,24 +47,33 @@ struct PriceHistoryChartView: View {
                     x: .value("Date", entry.fetchedAt),
                     y: .value("Price", entry.price)
                 )
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.gain)
+                .lineStyle(StrokeStyle(lineWidth: 2))
+                .interpolationMethod(.catmullRom)
+
+                AreaMark(
+                    x: .value("Date", entry.fetchedAt),
+                    y: .value("Price", entry.price)
+                )
+                .foregroundStyle(Theme.gain.opacity(0.12))
                 .interpolationMethod(.catmullRom)
 
                 PointMark(
                     x: .value("Date", entry.fetchedAt),
                     y: .value("Price", entry.price)
                 )
-                .foregroundStyle(.green)
-                .symbolSize(30)
+                .foregroundStyle(Theme.gain)
+                .symbolSize(24)
             }
         }
         .chartYAxis {
             AxisMarks(position: .leading) { value in
-                AxisGridLine()
+                AxisGridLine().foregroundStyle(Theme.rule)
                 AxisValueLabel {
                     if let price = value.as(Double.self) {
                         Text(formatPrice(price))
                             .font(.caption2)
+                            .foregroundStyle(Theme.inkSecondary)
                     }
                 }
             }
@@ -72,6 +81,7 @@ struct PriceHistoryChartView: View {
         .chartXAxis {
             AxisMarks { value in
                 AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                    .foregroundStyle(Theme.inkSecondary)
             }
         }
         .frame(height: 160)
@@ -80,37 +90,40 @@ struct PriceHistoryChartView: View {
     private var singleDataPoint: some View {
         HStack {
             Image(systemName: "chart.line.uptrend.xyaxis")
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("First price recorded: \(formatPrice(sortedEntries[0].price))")
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
             Text("on \(sortedEntries[0].fetchedAt.formatted(date: .abbreviated, time: .omitted))")
                 .font(.caption)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
     }
 
     private var statsRow: some View {
-        HStack(spacing: 16) {
-            statPill(label: "Low", value: formatPrice(minPrice), color: .green)
-            statPill(label: "Avg", value: formatPrice(avgPrice), color: .blue)
-            statPill(label: "High", value: formatPrice(maxPrice), color: .orange)
+        HStack(spacing: 8) {
+            statPill(label: "Low", value: formatPrice(minPrice), color: Theme.gain)
+            statPill(label: "Avg", value: formatPrice(avgPrice), color: Theme.brass)
+            statPill(label: "High", value: formatPrice(maxPrice), color: Theme.loss)
             Spacer()
             Text("\(sortedEntries.count) checks")
                 .font(.caption2)
-                .foregroundStyle(.tertiary)
+                .foregroundStyle(Theme.inkTertiary)
         }
     }
 
     private func statPill(label: String, value: String, color: Color) -> some View {
-        VStack(spacing: 2) {
+        HStack(spacing: 3) {
             Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.caption.weight(.semibold))
                 .foregroundStyle(color)
+            Text(value)
+                .foregroundStyle(Theme.ink)
         }
+        .font(.caption2.weight(.medium))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(color.opacity(0.1))
+        .clipShape(Capsule())
     }
 
     private func formatPrice(_ price: Double) -> String {

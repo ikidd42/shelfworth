@@ -14,40 +14,37 @@ struct BookDetailView: View {
     @State private var newCoverImage: UIImage?
     @State private var showDeleteConfirmation = false
     @State private var showEditSheet = false
+    @State private var heroMarble: UIImage?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: 20) {
                 // Cover & title header
                 headerSection
 
-                // Quick actions
+                // Reading status
                 quickActionsBar
-
-                Divider()
 
                 // eBay price section
                 ebayPriceSection
-
-                Divider()
 
                 // Book details
                 detailsSection
 
                 // Description
                 if let description = book.bookDescription, !description.isEmpty {
-                    Divider()
                     descriptionSection(description)
                 }
 
                 // Personal notes
-                Divider()
                 notesSection
 
                 Spacer(minLength: 40)
             }
             .padding()
         }
+        .background(Theme.canvas.ignoresSafeArea())
         .navigationTitle(book.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -112,69 +109,95 @@ struct BookDetailView: View {
             if shouldRefreshPrice {
                 await fetchEbayPrice()
             }
+            // Marbled endpaper for every book; when the book has cover art,
+            // the inks are extracted from the jacket so the sheet matches it.
+            let seed = Marbling.stableSeed(book.title)
+            let size = CGSize(width: 420, height: 300)
+            if let data = book.coverImageData,
+               let matched = await Task.detached(priority: .userInitiated, operation: {
+                   Marbling.palette(matchingCover: data)
+               }).value {
+                heroMarble = await Marbling.image(
+                    palette: matched, pattern: .bouquet, seed: seed, size: size
+                )
+            } else {
+                heroMarble = await Marbling.image(
+                    kind: Marbling.kind(forTitle: book.title),
+                    pattern: .bouquet, seed: seed, size: size
+                )
+            }
         }
     }
 
     // MARK: - Header
 
     private var headerSection: some View {
-        VStack(spacing: 16) {
-            BookCoverView(book: book, width: 160, height: 240)
+        VStack(spacing: 18) {
+            BookCoverView(book: book, width: 168, height: 252)
+                .padding(.top, 8)
 
-            VStack(spacing: 6) {
+            VStack(spacing: 7) {
                 Text(book.title)
-                    .font(.title2.weight(.bold))
+                    .font(Theme.display(26))
+                    .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.center)
 
                 Text(book.authors)
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
+                    .font(Theme.serif(18, weight: .medium))
+                    .foregroundStyle(Theme.inkSecondary)
 
                 // Rating
-                HStack(spacing: 4) {
+                HStack(spacing: 6) {
                     ForEach(1...5, id: \.self) { star in
                         Button {
-                            book.rating = star
+                            withAnimation(.snappy(duration: 0.25)) {
+                                book.rating = (book.rating == star) ? nil : star
+                            }
                         } label: {
                             Image(systemName: star <= (book.rating ?? 0) ? "star.fill" : "star")
-                                .foregroundStyle(star <= (book.rating ?? 0) ? .yellow : .gray.opacity(0.4))
+                                .foregroundStyle(star <= (book.rating ?? 0) ? Theme.brass : Theme.inkTertiary.opacity(0.5))
                                 .font(.title3)
-                                .symbolEffect(.bounce, value: star <= (book.rating ?? 0))
+                                .symbolEffect(.bounce, value: book.rating ?? 0)
                         }
                     }
                 }
-                .padding(.top, 4)
+                .padding(.top, 6)
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 24)
         .padding(.horizontal, 12)
         .background {
-            if let data = book.coverImageData, let uiImage = UIImage(data: data) {
-                Image(uiImage: uiImage)
-                    .resizable()
-                    .scaledToFill()
-                    .blur(radius: 60, opaque: true)
-                    .opacity(0.35)
-                    .overlay {
-                        LinearGradient(
-                            colors: [.clear, Color(.systemBackground).opacity(0.9)],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
+            ZStack {
+                if let heroMarble {
+                    // Marbled endpaper, ink-matched to the cover when one exists
+                    Image(uiImage: heroMarble)
+                        .resizable()
+                        .scaledToFill()
+                        .opacity(colorScheme == .dark ? 0.15 : 0.22)
+                }
+                LinearGradient(
+                    colors: [Theme.card.opacity(0.4), Theme.card],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
             }
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16))
+        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .strokeBorder(Theme.rule.opacity(0.8), lineWidth: 1)
+        }
+        .shadow(color: .black.opacity(0.06), radius: 14, y: 6)
     }
 
-    // MARK: - Quick Actions
+    // MARK: - Reading Status
 
     private var quickActionsBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: 10) {
             ForEach(ReadingStatus.allCases) { status in
                 Button {
-                    withAnimation {
+                    withAnimation(.snappy(duration: 0.25)) {
                         book.readingStatusEnum = status
                         if status == .reading && book.dateStartedReading == nil {
                             book.dateStartedReading = Date()
@@ -184,22 +207,29 @@ struct BookDetailView: View {
                         }
                     }
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 5) {
                         Image(systemName: status.systemImage)
-                            .font(.title3)
+                            .font(.body.weight(.semibold))
                             .symbolEffect(.bounce, value: book.readingStatusEnum == status)
                         Text(status.rawValue)
-                            .font(.caption2)
+                            .font(.caption2.weight(.medium))
                     }
                     .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 11)
                     .background(
                         book.readingStatusEnum == status
-                            ? Color.accentColor.opacity(0.15)
-                            : Color(.systemGray6)
+                        ? Theme.green
+                        : Theme.well
                     )
-                    .foregroundColor(book.readingStatusEnum == status ? Color.accentColor : Color.secondary)
-                    .clipShape(RoundedRectangle(cornerRadius: 10))
+                    .foregroundStyle(book.readingStatusEnum == status ? Theme.card : Theme.inkSecondary)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .strokeBorder(
+                                book.readingStatusEnum == status ? .clear : Theme.rule,
+                                lineWidth: 1
+                            )
+                    }
                 }
                 .buttonStyle(.plain)
             }
@@ -209,10 +239,9 @@ struct BookDetailView: View {
     // MARK: - eBay Price Section
 
     private var ebayPriceSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 14) {
             HStack {
-                Label("eBay Pricing", systemImage: "tag")
-                    .font(.headline)
+                SectionEyebrow(text: "Valuation")
 
                 Spacer()
 
@@ -224,21 +253,23 @@ struct BookDetailView: View {
                             .controlSize(.small)
                     } else {
                         Label("Refresh", systemImage: "arrow.clockwise")
-                            .font(.caption)
+                            .font(.caption.weight(.medium))
                     }
                 }
+                .tint(Theme.green)
                 .disabled(isFetchingPrice)
             }
 
             if let price = book.ebayLowestPrice {
-                HStack(alignment: .firstTextBaseline) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
                     Text(formatPrice(price))
-                        .font(.system(size: 32, weight: .bold, design: .rounded))
-                        .foregroundStyle(.green)
+                        .font(Theme.display(38))
+                        .foregroundStyle(Theme.brass)
+                        .contentTransition(.numericText())
 
-                    Text("lowest available")
+                    Text("lowest on eBay")
                         .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     if let change = book.recentPriceChange {
                         PriceDeltaBadge(change: change, perspective: .owning)
@@ -246,9 +277,9 @@ struct BookDetailView: View {
                 }
 
                 if let lastUpdated = book.ebayPriceLastUpdated {
-                    Text("Updated \(lastUpdated.formatted(.relative(presentation: .named)))")
+                    Text("Appraised \(lastUpdated.formatted(.relative(presentation: .named)))")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
 
                 HStack(spacing: 16) {
@@ -265,42 +296,47 @@ struct BookDetailView: View {
                         }
                     }
                 }
+                .tint(Theme.green)
             } else if let error = priceError {
                 Label(error, systemImage: "exclamationmark.triangle")
                     .font(.caption)
-                    .foregroundStyle(.orange)
+                    .foregroundStyle(Theme.brass)
             } else if !isFetchingPrice {
-                Text("No price data yet")
+                Text("No appraisal yet — refresh to check eBay.")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
 
             // Price history chart
             if !book.priceHistory.isEmpty {
-                Divider()
-                DisclosureGroup("Price History") {
+                Rectangle()
+                    .fill(Theme.rule)
+                    .frame(height: 1)
+
+                DisclosureGroup {
                     PriceHistoryChartView(entries: book.priceHistory)
-                        .padding(.top, 4)
+                        .padding(.top, 6)
+                } label: {
+                    Text("Price history")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundStyle(Theme.ink)
                 }
-                .font(.subheadline)
+                .tint(Theme.inkSecondary)
             }
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .cardStyle()
     }
 
     // MARK: - Details
 
     private var detailsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Details")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            SectionEyebrow(text: "Details")
 
             LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], alignment: .leading, spacing: 12) {
+                GridItem(.flexible(), alignment: .leading),
+                GridItem(.flexible(), alignment: .leading)
+            ], alignment: .leading, spacing: 14) {
                 if let isbn = book.isbn13 ?? book.isbn {
                     detailItem(label: "ISBN", value: isbn)
                 }
@@ -338,46 +374,54 @@ struct BookDetailView: View {
                 }
             }
         }
+        .cardStyle()
     }
 
     private func detailItem(label: String, value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(label.uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .tracking(0.8)
+                .foregroundStyle(Theme.inkTertiary)
             Text(value)
                 .font(.subheadline)
+                .foregroundStyle(Theme.ink)
         }
     }
 
     // MARK: - Description
 
     private func descriptionSection(_ text: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Description")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 10) {
+            SectionEyebrow(text: "About this book")
             Text(text)
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(Theme.inkSecondary)
+                .lineSpacing(4)
         }
+        .cardStyle()
     }
 
     // MARK: - Notes
 
     private var notesSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Personal Notes")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 10) {
+            SectionEyebrow(text: "Marginalia")
 
             TextEditor(text: Binding(
                 get: { book.personalNotes ?? "" },
                 set: { book.personalNotes = $0.isEmpty ? nil : $0 }
             ))
-            .frame(minHeight: 80)
-            .padding(8)
-            .background(Color(.systemGray6))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .frame(minHeight: 88)
+            .padding(10)
+            .background(Theme.well)
+            .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .strokeBorder(Theme.rule, lineWidth: 1)
+            }
         }
+        .cardStyle()
     }
 
     // MARK: - Helpers
@@ -405,9 +449,11 @@ struct BookDetailView: View {
         priceError = nil
 
         if let result = await lookupService.fetchEbayPrice(for: book) {
-            book.ebayLowestPrice = result.lowestPrice
-            book.ebayPriceURL = result.listingURL
-            book.ebayPriceLastUpdated = Date()
+            withAnimation {
+                book.ebayLowestPrice = result.lowestPrice
+                book.ebayPriceURL = result.listingURL
+                book.ebayPriceLastUpdated = Date()
+            }
 
             // Record price history
             let entry = PriceHistoryEntry(price: result.lowestPrice, currency: result.currency)

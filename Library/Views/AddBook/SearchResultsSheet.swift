@@ -68,7 +68,7 @@ struct SearchResultsSheet: View {
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(result.title)
-                    .font(.headline)
+                    .font(Theme.serif(16, weight: .semibold))
                     .lineLimit(2)
                     .foregroundStyle(.primary)
 
@@ -93,8 +93,8 @@ struct SearchResultsSheet: View {
                         .font(.caption2)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 1)
-                        .background(Color.blue.opacity(0.1))
-                        .foregroundStyle(.blue)
+                        .background(Theme.green.opacity(0.1))
+                        .foregroundStyle(Theme.green)
                         .clipShape(Capsule())
                 }
             }
@@ -105,7 +105,7 @@ struct SearchResultsSheet: View {
                 ProgressView()
             } else {
                 Image(systemName: "plus.circle")
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Theme.green)
                     .font(.title3)
             }
         }
@@ -114,11 +114,11 @@ struct SearchResultsSheet: View {
 
     private var thumbnailPlaceholder: some View {
         RoundedRectangle(cornerRadius: 4)
-            .fill(Color(.systemGray5))
+            .fill(Theme.well)
             .frame(width: 50, height: 75)
             .overlay {
                 Image(systemName: "book.closed")
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
             }
     }
 

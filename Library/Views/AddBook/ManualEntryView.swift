@@ -79,6 +79,7 @@ struct ManualEntryView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
 
             // Save button
             Button {
@@ -93,6 +94,7 @@ struct ManualEntryView: View {
             .disabled(title.isEmpty || authors.isEmpty)
         }
         .scrollDismissesKeyboard(.interactively)
+        .background(Theme.canvas.ignoresSafeArea())
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()

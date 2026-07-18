@@ -26,16 +26,16 @@ struct PriceDeltaBadge: View {
     }
 
     var body: some View {
-        HStack(spacing: 2) {
-            Image(systemName: isRise ? "arrow.up" : "arrow.down")
+        HStack(spacing: 3) {
+            Image(systemName: isRise ? "arrow.up.right" : "arrow.down.right")
                 .font(.system(size: 8, weight: .bold))
             Text(abs(change).formattedAsPrice())
-                .font(.caption2.weight(.semibold))
+                .font(.caption2.weight(.semibold).monospacedDigit())
         }
-        .foregroundStyle(isGoodNews ? .green : .red)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 2)
-        .background((isGoodNews ? Color.green : Color.red).opacity(0.12))
+        .foregroundStyle(isGoodNews ? Theme.gain : Theme.loss)
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(isGoodNews ? Theme.gainWash() : Theme.lossWash())
         .clipShape(Capsule())
         .accessibilityLabel("Price \(isRise ? "rose" : "dropped") \(abs(change).formattedAsPrice())")
     }

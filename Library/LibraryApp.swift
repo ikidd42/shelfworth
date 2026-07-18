@@ -8,6 +8,7 @@ struct LibraryApp: App {
 
     init() {
         try? Tips.configure()
+        Theme.applyAppearances()
 
         do {
             container = try ModelContainer(
@@ -27,6 +28,7 @@ struct LibraryApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .tint(Theme.green)
         }
         .modelContainer(container)
     }

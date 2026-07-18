@@ -16,37 +16,22 @@ struct WatchlistView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                if !watchedBooks.isEmpty {
-                    TipView(shareTip)
-                        .listRowBackground(Color.clear)
-                        .listRowInsets(EdgeInsets())
-                }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 22) {
+                    if !watchedBooks.isEmpty {
+                        TipView(shareTip)
+                            .tipViewStyle(ThemedTipStyle())
+                    }
 
-                // Summary card
-                if !watchedBooks.isEmpty {
-                    Section {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Watching \(watchedBooks.count) book\(watchedBooks.count == 1 ? "" : "s")")
-                                .font(.headline)
-                            if let total = totalValue {
-                                Text("Combined lowest price: \(formatPrice(total))")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                        .padding(.vertical, 4)
+                    if !watchedBooks.isEmpty {
+                        summaryCard
+                        watchingSection
                     }
                 }
-
-                // Watched books list
-                ForEach(watchedBooks) { book in
-                    NavigationLink(destination: WatchedBookDetailView(book: book)) {
-                        watchRow(book)
-                    }
-                }
-                .onDelete(perform: deleteItems)
+                .padding()
+                .padding(.bottom, 12)
             }
+            .background(Theme.canvas.ignoresSafeArea())
             .navigationTitle("Watchlist")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
@@ -62,14 +47,7 @@ struct WatchlistView: View {
             }
             .overlay {
                 if watchedBooks.isEmpty {
-                    ContentUnavailableView {
-                        Label("No Watched Books", systemImage: "eye")
-                    } description: {
-                        Text("Share an eBay listing to the Library app, or tap + to search for a book to track.")
-                    } actions: {
-                        Button("Add a Book") { showAddSheet = true }
-                            .buttonStyle(.borderedProminent)
-                    }
+                    emptyState
                 }
             }
             // Ingest on first load
@@ -86,43 +64,142 @@ struct WatchlistView: View {
         }
     }
 
+    // MARK: - Summary Card
+
+    private var summaryCard: some View {
+        HStack(spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                SectionEyebrow(text: "Watching")
+
+                Text("\(watchedBooks.count) book\(watchedBooks.count == 1 ? "" : "s")")
+                    .font(Theme.display(28))
+                    .foregroundStyle(Theme.ink)
+
+                if let total = totalValue {
+                    Text("Combined lowest: \(formatPrice(total))")
+                        .font(.subheadline)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+            }
+
+            Spacer()
+
+            Image(systemName: "eye.fill")
+                .font(.system(size: 26))
+                .foregroundStyle(Theme.brass.opacity(0.7))
+        }
+        .cardStyle(radius: 20, padding: 20)
+    }
+
+    // MARK: - Watching Section
+
+    private var watchingSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionEyebrow(text: "On the radar")
+                .padding(.leading, 4)
+
+            VStack(spacing: 0) {
+                ForEach(Array(watchedBooks.enumerated()), id: \.element.id) { index, book in
+                    NavigationLink(destination: WatchedBookDetailView(book: book)) {
+                        watchRow(book)
+                    }
+                    .buttonStyle(.plain)
+                    .contextMenu {
+                        Button(role: .destructive) {
+                            withAnimation { modelContext.delete(book) }
+                        } label: {
+                            Label("Remove", systemImage: "trash")
+                        }
+                    }
+
+                    if index < watchedBooks.count - 1 {
+                        Rectangle()
+                            .fill(Theme.rule)
+                            .frame(height: 1)
+                            .padding(.leading, 66)
+                    }
+                }
+            }
+            .cardStyle(padding: 0)
+        }
+    }
+
     // MARK: - Row
 
     private func watchRow(_ book: WatchedBook) -> some View {
         HStack(spacing: 12) {
-            WatchedBookCoverView(book: book, width: 35, height: 52)
+            WatchedBookCoverView(book: book, width: 38, height: 57)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(book.title)
-                    .font(.subheadline)
+                    .font(Theme.serif(15, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
                     .lineLimit(1)
                 Text(book.authors.isEmpty ? "Unknown Author" : book.authors)
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: 2) {
+            VStack(alignment: .trailing, spacing: 3) {
                 if let price = book.ebayLowestPrice {
                     Text(formatPrice(price))
-                        .font(.subheadline.weight(.semibold))
+                        .font(Theme.figure(16))
+                        .foregroundStyle(Theme.ink)
                     if let change = book.recentPriceChange {
                         PriceDeltaBadge(change: change)
                     } else if let updated = book.ebayPriceLastUpdated {
                         Text(updated.formatted(.relative(presentation: .named)))
                             .font(.caption2)
-                            .foregroundStyle(.tertiary)
+                            .foregroundStyle(Theme.inkTertiary)
                     }
                 } else {
                     Text("No price yet")
                         .font(.caption)
-                        .foregroundStyle(.tertiary)
+                        .foregroundStyle(Theme.inkTertiary)
                 }
             }
+
+            Image(systemName: "chevron.right")
+                .font(.caption2.weight(.bold))
+                .foregroundStyle(Theme.inkTertiary)
         }
-        .padding(.vertical, 2)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 11)
+        .contentShape(Rectangle())
+    }
+
+    // MARK: - Empty State
+
+    private var emptyState: some View {
+        VStack(spacing: 18) {
+            Image(systemName: "binoculars.fill")
+                .font(.system(size: 44))
+                .foregroundStyle(Theme.brass)
+
+            Text("Nothing on the radar")
+                .font(Theme.display(26))
+
+            Text("Share an eBay listing to Library, or search\nfor a book to track its price.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+
+            Button {
+                showAddSheet = true
+            } label: {
+                Label("Add a Book", systemImage: "plus")
+                    .font(.headline)
+                    .padding(.horizontal, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(Theme.green)
+            .padding(.top, 4)
+        }
+        .padding()
     }
 
     // MARK: - Actions
@@ -131,12 +208,6 @@ struct WatchlistView: View {
         let prices = watchedBooks.compactMap(\.ebayLowestPrice)
         guard !prices.isEmpty else { return nil }
         return prices.reduce(0, +)
-    }
-
-    private func deleteItems(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(watchedBooks[index])
-        }
     }
 
     /// Batch-refreshes lowest eBay prices for all watched books.
@@ -244,5 +315,40 @@ struct WatchlistView: View {
 
     private func formatPrice(_ price: Double) -> String {
         price.formattedAsPrice()
+    }
+}
+
+// MARK: - Themed Tip Style
+
+/// TipKit style matching the paper-and-brass design language.
+struct ThemedTipStyle: TipViewStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "square.and.arrow.up")
+                .font(.title3)
+                .foregroundStyle(Theme.brass)
+
+            VStack(alignment: .leading, spacing: 4) {
+                if let title = configuration.title {
+                    title
+                        .font(Theme.serif(15, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                }
+                if let message = configuration.message {
+                    message
+                        .font(.caption)
+                        .foregroundStyle(Theme.inkSecondary)
+                }
+            }
+
+            Spacer()
+
+            Button(action: { configuration.tip.invalidate(reason: .tipClosed) }) {
+                Image(systemName: "xmark")
+                    .font(.caption2.weight(.bold))
+                    .foregroundStyle(Theme.inkTertiary)
+            }
+        }
+        .cardStyle()
     }
 }

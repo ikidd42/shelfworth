@@ -238,7 +238,7 @@ struct BatchScannerSheet: View {
                     .font(.headline)
                 if model.foundCount > 0 {
                     Text("• \(model.foundCount) found")
-                        .foregroundStyle(.green)
+                        .foregroundStyle(Theme.gain)
                 }
                 Spacer()
 
@@ -322,17 +322,17 @@ struct BatchScannerSheet: View {
                             image.resizable().aspectRatio(contentMode: .fill)
                         default:
                             RoundedRectangle(cornerRadius: 4)
-                                .fill(Color.green.opacity(0.2))
-                                .overlay { Image(systemName: "checkmark").foregroundStyle(.green) }
+                                .fill(Theme.gain.opacity(0.2))
+                                .overlay { Image(systemName: "checkmark").foregroundStyle(Theme.gain) }
                         }
                     }
                     .frame(width: 50, height: 70)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                 } else {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.green.opacity(0.2))
+                        .fill(Theme.gain.opacity(0.2))
                         .frame(width: 50, height: 70)
-                        .overlay { Image(systemName: "checkmark").foregroundStyle(.green) }
+                        .overlay { Image(systemName: "checkmark").foregroundStyle(Theme.gain) }
                 }
             case .notFound:
                 // Tappable — snap ISBN to retry
@@ -341,7 +341,7 @@ struct BatchScannerSheet: View {
                     showCamera = true
                 } label: {
                     RoundedRectangle(cornerRadius: 4)
-                        .fill(Color.orange.opacity(0.2))
+                        .fill(Theme.brass.opacity(0.2))
                         .frame(width: 50, height: 70)
                         .overlay {
                             VStack(spacing: 2) {
@@ -350,15 +350,15 @@ struct BatchScannerSheet: View {
                                 Text("Snap")
                                     .font(.system(size: 8))
                             }
-                            .foregroundStyle(.orange)
+                            .foregroundStyle(Theme.brass)
                         }
                 }
                 .buttonStyle(.plain)
             case .error:
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color.red.opacity(0.2))
+                    .fill(Theme.loss.opacity(0.2))
                     .frame(width: 50, height: 70)
-                    .overlay { Image(systemName: "xmark").foregroundStyle(.red) }
+                    .overlay { Image(systemName: "xmark").foregroundStyle(Theme.loss) }
             }
 
             Text(item.title ?? item.barcode)
@@ -508,14 +508,14 @@ struct BatchReviewSheet: View {
                         image.resizable().aspectRatio(contentMode: .fill)
                     default:
                         RoundedRectangle(cornerRadius: 4)
-                            .fill(Color(.systemGray5))
+                            .fill(Theme.well)
                     }
                 }
                 .frame(width: 40, height: 60)
                 .clipShape(RoundedRectangle(cornerRadius: 4))
             } else {
                 RoundedRectangle(cornerRadius: 4)
-                    .fill(Color(.systemGray5))
+                    .fill(Theme.well)
                     .frame(width: 40, height: 60)
                     .overlay { Image(systemName: "book.closed").font(.caption).foregroundStyle(.secondary) }
             }
@@ -532,7 +532,7 @@ struct BatchReviewSheet: View {
                    DuplicateDetector.findDuplicate(in: existingBooks, for: result) != nil {
                     Text("Already in library")
                         .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .foregroundStyle(Theme.brass)
                 }
             }
 
@@ -546,7 +546,7 @@ struct BatchReviewSheet: View {
                 }
             } label: {
                 Image(systemName: selectedItems.contains(item.id) ? "checkmark.circle.fill" : "circle")
-                    .foregroundStyle(selectedItems.contains(item.id) ? .green : .secondary)
+                    .foregroundStyle(selectedItems.contains(item.id) ? Theme.gain : Theme.inkTertiary)
                     .font(.title3)
             }
             .buttonStyle(.plain)
@@ -556,7 +556,7 @@ struct BatchReviewSheet: View {
     private func notFoundRow(_ item: BatchScanModel.ScannedItem) -> some View {
         HStack(spacing: 12) {
             Image(systemName: "questionmark.circle")
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.brass)
                 .font(.title3)
 
             VStack(alignment: .leading, spacing: 2) {
@@ -566,7 +566,7 @@ struct BatchReviewSheet: View {
                 if case .searching = item.state {
                     Text("Searching...")
                         .font(.caption)
-                        .foregroundStyle(.blue)
+                        .foregroundStyle(Theme.green)
                 } else {
                     Text("Not found in book databases")
                         .font(.caption)

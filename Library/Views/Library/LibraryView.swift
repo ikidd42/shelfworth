@@ -13,6 +13,7 @@ struct LibraryView: View {
     @State private var showSettings = false
     @State private var viewMode: ViewMode = .grid
     @State private var searchScope: SearchScope = .all
+    @State private var navigationPath = NavigationPath()
     @Namespace private var zoomNamespace
 
     enum ViewMode: String, CaseIterable {
@@ -78,7 +79,7 @@ struct LibraryView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if books.isEmpty {
                     emptyLibraryView
@@ -86,7 +87,11 @@ struct LibraryView: View {
                     booksView
                 }
             }
+            .background(Theme.canvas.ignoresSafeArea())
             .navigationTitle("My Library")
+            .navigationDestination(for: Book.self) { book in
+                BookDetailView(book: book)
+            }
             .searchable(text: $searchText, prompt: "Search books...")
             .searchScopes($searchScope) {
                 ForEach(SearchScope.allCases, id: \.self) { scope in
@@ -123,14 +128,6 @@ struct LibraryView: View {
                                 Text(option.rawValue).tag(option)
                             }
                         }
-
-                        Picker("Filter", selection: $filterStatus) {
-                            Text("All Books").tag(ReadingStatus?.none)
-                            ForEach(ReadingStatus.allCases) { status in
-                                Label(status.rawValue, systemImage: status.systemImage)
-                                    .tag(ReadingStatus?.some(status))
-                            }
-                        }
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
                     }
@@ -142,6 +139,21 @@ struct LibraryView: View {
             .sheet(isPresented: $showSettings) {
                 SettingsView()
             }
+            .task {
+                // DEBUG launch args for simulator screenshots:
+                // `-openFirstBook YES` pushes the first book's detail page;
+                // `-openBook <title prefix>` pushes a specific book.
+                #if DEBUG
+                guard navigationPath.isEmpty else { return }
+                if let prefix = UserDefaults.standard.string(forKey: "openBook"),
+                   let match = books.first(where: { $0.title.hasPrefix(prefix) }) {
+                    navigationPath.append(match)
+                } else if UserDefaults.standard.bool(forKey: "openFirstBook"),
+                          let first = books.first {
+                    navigationPath.append(first)
+                }
+                #endif
+            }
         }
     }
 
@@ -152,49 +164,86 @@ struct LibraryView: View {
         switch viewMode {
         case .grid:
             ScrollView {
+                statusFilterRow
+                    .padding(.top, 4)
                 bookCountHeader
                 bookGrid
             }
         case .list:
             List {
-                bookCountHeader
-                    .listRowSeparator(.hidden)
-                ForEach(filteredBooks) { book in
-                    NavigationLink(
-                        destination: BookDetailView(book: book)
-                            .zoomTransitionDestination(id: book.id, in: zoomNamespace)
-                    ) {
-                        bookListRow(book)
-                    }
+                Section {
+                    statusFilterRow
+                        .listRowInsets(EdgeInsets(top: 4, leading: 0, bottom: 4, trailing: 0))
+                        .listRowSeparator(.hidden)
+                        .listRowBackground(Color.clear)
                 }
-                .onDelete(perform: deleteBooks)
+
+                Section {
+                    ForEach(filteredBooks) { book in
+                        NavigationLink(
+                            destination: BookDetailView(book: book)
+                                .zoomTransitionDestination(id: book.id, in: zoomNamespace)
+                        ) {
+                            bookListRow(book)
+                        }
+                        .listRowBackground(Theme.card)
+                    }
+                    .onDelete(perform: deleteBooks)
+                } header: {
+                    bookCountHeader
+                        .textCase(nil)
+                }
             }
-            .listStyle(.plain)
+            .listStyle(.insetGrouped)
+            .scrollContentBackground(.hidden)
         }
     }
 
+    // MARK: - Status Filter Chips
+
+    private var statusFilterRow: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                FilterChip(title: "All", systemImage: nil, isSelected: filterStatus == nil) {
+                    filterStatus = nil
+                }
+                ForEach(ReadingStatus.allCases) { status in
+                    FilterChip(
+                        title: status.rawValue,
+                        systemImage: status.systemImage,
+                        isSelected: filterStatus == status
+                    ) {
+                        filterStatus = (filterStatus == status) ? nil : status
+                    }
+                }
+            }
+            .padding(.horizontal)
+        }
+        .contentMargins(.horizontal, 0, for: .scrollContent)
+    }
+
     private var bookCountHeader: some View {
-        HStack {
-            Text("\(filteredBooks.count) book\(filteredBooks.count == 1 ? "" : "s")")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+        HStack(alignment: .firstTextBaseline) {
+            Text("\(filteredBooks.count) volume\(filteredBooks.count == 1 ? "" : "s")")
+                .font(Theme.serif(15, weight: .medium))
+                .foregroundStyle(Theme.inkSecondary)
 
             if let status = filterStatus {
-                Text("• \(status.rawValue)")
+                Text("· \(status.rawValue)")
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkTertiary)
             }
 
             Spacer()
         }
         .padding(.horizontal)
-        .padding(.top, 4)
+        .padding(.top, 6)
     }
 
     private var bookGrid: some View {
         LazyVGrid(
             columns: [GridItem(.adaptive(minimum: 110, maximum: 140), spacing: 16)],
-            spacing: 20
+            spacing: 24
         ) {
             ForEach(filteredBooks) { book in
                 NavigationLink(
@@ -204,19 +253,20 @@ struct LibraryView: View {
                     bookGridItem(book)
                 }
                 .buttonStyle(.plain)
-                .zoomTransitionSource(id: book.id, in: zoomNamespace)
                 .contextMenu {
                     bookContextMenu(book)
                 }
+                .zoomTransitionSource(id: book.id, in: zoomNamespace)
             }
         }
         .padding()
+        .padding(.bottom, 8)
     }
 
     // MARK: - Grid Item
 
     private func bookGridItem(_ book: Book) -> some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             ZStack {
                 BookCoverView(book: book, width: 110, height: 165)
 
@@ -224,12 +274,12 @@ struct LibraryView: View {
                 if book.copyCount > 1 {
                     VStack {
                         HStack {
-                            Text("\(book.copyCount)")
-                                .font(.caption2.weight(.bold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 5)
+                            Text("×\(book.copyCount)")
+                                .font(.system(size: 10, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.card)
+                                .padding(.horizontal, 6)
                                 .padding(.vertical, 2)
-                                .background(Color.blue)
+                                .background(Theme.ink.opacity(0.85))
                                 .clipShape(Capsule())
                                 .offset(x: -4, y: -4)
                             Spacer()
@@ -245,7 +295,7 @@ struct LibraryView: View {
                         HStack {
                             Spacer()
                             PriceBadgeView(price: price, currency: "USD")
-                                .offset(x: 4, y: 4)
+                                .offset(x: 5, y: 5)
                         }
                     }
                 }
@@ -254,27 +304,24 @@ struct LibraryView: View {
 
             VStack(spacing: 2) {
                 Text(book.title)
-                    .font(.caption.weight(.medium))
+                    .font(Theme.serif(13, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text(book.authors)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
                     .lineLimit(1)
-            }
-            .frame(width: 110)
 
-            // Star rating
-            if let rating = book.rating, rating > 0 {
-                HStack(spacing: 1) {
-                    ForEach(1...5, id: \.self) { star in
-                        Image(systemName: star <= rating ? "star.fill" : "star")
-                            .font(.system(size: 8))
-                            .foregroundStyle(star <= rating ? .yellow : .gray.opacity(0.3))
-                    }
+                // Star rating
+                if let rating = book.rating, rating > 0 {
+                    StarRatingView(rating: rating, size: 8)
+                        .padding(.top, 1)
                 }
             }
+            .frame(width: 118)
         }
     }
 
@@ -282,26 +329,28 @@ struct LibraryView: View {
 
     private func bookListRow(_ book: Book) -> some View {
         HStack(spacing: 12) {
-            BookCoverView(book: book, width: 50, height: 75)
+            BookCoverView(book: book, width: 46, height: 69)
+                .zoomTransitionSource(id: book.id, in: zoomNamespace)
 
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(book.title)
-                    .font(.headline)
+                    .font(Theme.serif(16, weight: .semibold))
                     .lineLimit(2)
 
                 Text(book.authors)
                     .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Theme.inkSecondary)
+                    .lineLimit(1)
 
                 HStack(spacing: 8) {
                     Label(book.readingStatusEnum.rawValue, systemImage: book.readingStatusEnum.systemImage)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(Theme.inkSecondary)
 
                     if book.copyCount > 1 {
                         Text("\(book.copyCount) copies")
                             .font(.caption)
-                            .foregroundStyle(.blue)
+                            .foregroundStyle(Theme.brass)
                     }
 
                     if let price = book.ebayLowestPrice {
@@ -313,13 +362,7 @@ struct LibraryView: View {
             Spacer()
 
             if let rating = book.rating, rating > 0 {
-                HStack(spacing: 1) {
-                    ForEach(1...5, id: \.self) { star in
-                        Image(systemName: star <= rating ? "star.fill" : "star")
-                            .font(.system(size: 10))
-                            .foregroundStyle(star <= rating ? .yellow : .gray.opacity(0.3))
-                    }
-                }
+                StarRatingView(rating: rating, size: 10)
             }
         }
         .padding(.vertical, 4)
@@ -352,19 +395,95 @@ struct LibraryView: View {
 
     // MARK: - Empty State
 
+    @State private var emptyMarble: UIImage?
+    @Environment(\.colorScheme) private var colorScheme
+
     private var emptyLibraryView: some View {
-        ContentUnavailableView {
-            Label("No Books Yet", systemImage: "books.vertical")
-        } description: {
-            Text("Tap the + button to add your first book by scanning a barcode, taking a photo, or searching manually.")
-        } actions: {
+        VStack(spacing: 20) {
+            Spacer()
+
+            // Stacked book spines motif — cloth with one marbled half-leather
+            HStack(alignment: .bottom, spacing: 5) {
+                spine(color: 0x7A3B2E, height: 64)
+                marbledSpine(height: 80)
+                spine(color: 0x3D5A44, height: 72)
+                spine(color: 0xA97B2F, height: 58)
+            }
+            .padding(.bottom, 4)
+            .task {
+                emptyMarble = await Marbling.image(
+                    kind: .indigo,
+                    pattern: .nonpareil,
+                    seed: Marbling.stableSeed("library-empty-state"),
+                    size: CGSize(width: 22, height: 80)
+                )
+            }
+
+            Text("Your shelves are empty")
+                .font(Theme.display(26))
+
+            Text("Scan a barcode, photograph a title page,\nor search to add your first book.")
+                .font(.subheadline)
+                .foregroundStyle(Theme.inkSecondary)
+                .multilineTextAlignment(.center)
+
             Button {
                 showAddBook = true
             } label: {
                 Label("Add a Book", systemImage: "plus")
+                    .font(.headline)
+                    .padding(.horizontal, 8)
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .tint(Theme.green)
+            .padding(.top, 6)
+
+            Spacer()
+            Spacer()
         }
+        .padding()
+    }
+
+    private func spine(color: UInt32, height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .fill(Color(UIColor(hex: color)))
+            .frame(width: 22, height: height)
+            .overlay {
+                RoundedRectangle(cornerRadius: 3, style: .continuous)
+                    .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+            }
+            .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+    }
+
+    private func marbledSpine(height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .fill(Color(UIColor(hex: 0x2B190E)))
+            .frame(width: 22, height: height)
+            .overlay {
+                if let emptyMarble {
+                    Image(uiImage: emptyMarble)
+                        .resizable()
+                        .scaledToFill()
+                        .overlay {
+                            if colorScheme == .dark {
+                                CoverPalette.lamplightScrim.opacity(0.34)
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                }
+            }
+            .overlay {
+                // Gilt bands across the marbled spine
+                VStack {
+                    Rectangle().fill(CoverPalette.giltColor.opacity(0.9)).frame(height: 1.5)
+                        .padding(.top, height * 0.14)
+                    Spacer()
+                    Rectangle().fill(CoverPalette.giltColor.opacity(0.9)).frame(height: 1.5)
+                        .padding(.bottom, height * 0.14)
+                }
+            }
+            .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
     }
 
     // MARK: - Delete
