@@ -207,7 +207,9 @@ struct CoverArtView: View {
         .task(id: "\(kind.rawValue)-\(title)-\(Int(width))x\(Int(height))") {
             let seed = Marbling.stableSeed(title)
             let img = await Marbling.image(
-                kind: kind, seed: seed,
+                kind: kind,
+                pattern: Marbling.boardPattern(forTitle: title),
+                seed: seed,
                 size: CGSize(width: width - stripWidth, height: height)
             )
             withAnimation(.easeIn(duration: 0.3)) { marble = img }

@@ -51,4 +51,34 @@ struct MarblingTests {
         let second = await Marbling.image(kind: .indigo, seed: 7, size: CGSize(width: 40, height: 40))
         #expect(first === second)
     }
+
+    // MARK: - Patterns
+
+    @Test func boardPatternIsStableAndBoardOnly() {
+        for title in ["Dune", "The Hobbit", "Emma", "1984"] {
+            let pattern = Marbling.boardPattern(forTitle: title)
+            #expect(pattern == Marbling.boardPattern(forTitle: title))
+            #expect(pattern != .bouquet) // bouquet is reserved for endpapers
+        }
+    }
+
+    @Test func boardPatternMixesStoneAndNonpareil() {
+        let patterns = Set((0..<200).map { Marbling.boardPattern(forTitle: "Volume \($0)") })
+        #expect(patterns == [.stone, .nonpareil])
+    }
+
+    @Test func patternsAreCachedSeparately() async {
+        let stone = await Marbling.image(kind: .forest, pattern: .stone, seed: 3,
+                                         size: CGSize(width: 40, height: 40))
+        let bouquet = await Marbling.image(kind: .forest, pattern: .bouquet, seed: 3,
+                                           size: CGSize(width: 40, height: 40))
+        #expect(stone !== bouquet)
+    }
+
+    @Test func patternsProduceDifferentSheets() async {
+        let size = CGSize(width: 30, height: 30)
+        let stone = await Marbling.image(kind: .crimson, pattern: .stone, seed: 5, size: size)
+        let nonpareil = await Marbling.image(kind: .crimson, pattern: .nonpareil, seed: 5, size: size)
+        #expect(stone.pngData() != nonpareil.pngData())
+    }
 }

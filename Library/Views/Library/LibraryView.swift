@@ -415,6 +415,7 @@ struct LibraryView: View {
             .task {
                 emptyMarble = await Marbling.image(
                     kind: .indigo,
+                    pattern: .nonpareil,
                     seed: Marbling.stableSeed("library-empty-state"),
                     size: CGSize(width: 22, height: 80)
                 )

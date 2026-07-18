@@ -114,6 +114,7 @@ struct BookDetailView: View {
                 let kind = Marbling.kind(forTitle: book.title) ?? .forest
                 heroMarble = await Marbling.image(
                     kind: kind,
+                    pattern: .bouquet,   // endpapers get the ornate sheet
                     seed: Marbling.stableSeed(book.title),
                     size: CGSize(width: 420, height: 300)
                 )
