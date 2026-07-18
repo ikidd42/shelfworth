@@ -14,6 +14,7 @@ struct BookDetailView: View {
     @State private var newCoverImage: UIImage?
     @State private var showDeleteConfirmation = false
     @State private var showEditSheet = false
+    @State private var heroMarble: UIImage?
 
     var body: some View {
         ScrollView {
@@ -107,6 +108,15 @@ struct BookDetailView: View {
             if shouldRefreshPrice {
                 await fetchEbayPrice()
             }
+            // Marbled endpaper for books with generated covers
+            if book.coverImageData == nil && book.coverImageURL == nil {
+                let kind = Marbling.kind(forTitle: book.title) ?? .forest
+                heroMarble = await Marbling.image(
+                    kind: kind,
+                    seed: Marbling.stableSeed(book.title),
+                    size: CGSize(width: 420, height: 300)
+                )
+            }
         }
     }
 
@@ -156,6 +166,12 @@ struct BookDetailView: View {
                         .scaledToFill()
                         .blur(radius: 70, opaque: true)
                         .opacity(0.30)
+                } else if let heroMarble {
+                    // Marbled endpaper behind books with generated covers
+                    Image(uiImage: heroMarble)
+                        .resizable()
+                        .scaledToFill()
+                        .opacity(0.22)
                 }
                 LinearGradient(
                     colors: [Theme.card.opacity(0.4), Theme.card],

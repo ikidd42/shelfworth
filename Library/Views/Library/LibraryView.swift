@@ -397,18 +397,27 @@ struct LibraryView: View {
 
     // MARK: - Empty State
 
+    @State private var emptyMarble: UIImage?
+
     private var emptyLibraryView: some View {
         VStack(spacing: 20) {
             Spacer()
 
-            // Stacked book spines motif
+            // Stacked book spines motif — cloth with one marbled half-leather
             HStack(alignment: .bottom, spacing: 5) {
                 spine(color: 0x7A3B2E, height: 64)
-                spine(color: 0x33465E, height: 80)
+                marbledSpine(height: 80)
                 spine(color: 0x3D5A44, height: 72)
                 spine(color: 0xA97B2F, height: 58)
             }
             .padding(.bottom, 4)
+            .task {
+                emptyMarble = await Marbling.image(
+                    kind: .indigo,
+                    seed: Marbling.stableSeed("library-empty-state"),
+                    size: CGSize(width: 22, height: 80)
+                )
+            }
 
             Text("Your shelves are empty")
                 .font(Theme.display(26))
@@ -443,6 +452,31 @@ struct LibraryView: View {
             .overlay {
                 RoundedRectangle(cornerRadius: 3, style: .continuous)
                     .strokeBorder(.white.opacity(0.15), lineWidth: 0.5)
+            }
+            .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
+    }
+
+    private func marbledSpine(height: CGFloat) -> some View {
+        RoundedRectangle(cornerRadius: 3, style: .continuous)
+            .fill(Color(UIColor(hex: 0x2B190E)))
+            .frame(width: 22, height: height)
+            .overlay {
+                if let emptyMarble {
+                    Image(uiImage: emptyMarble)
+                        .resizable()
+                        .scaledToFill()
+                        .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
+                }
+            }
+            .overlay {
+                // Gilt bands across the marbled spine
+                VStack {
+                    Rectangle().fill(CoverPalette.giltColor.opacity(0.9)).frame(height: 1.5)
+                        .padding(.top, height * 0.14)
+                    Spacer()
+                    Rectangle().fill(CoverPalette.giltColor.opacity(0.9)).frame(height: 1.5)
+                        .padding(.bottom, height * 0.14)
+                }
             }
             .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
     }

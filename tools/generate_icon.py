@@ -9,6 +9,7 @@ Outputs (into Library/Library/Assets.xcassets):
 """
 
 from PIL import Image, ImageDraw, ImageFilter
+import numpy as np
 import os
 
 ASSETS = "Library/Library/Assets.xcassets"
@@ -27,6 +28,84 @@ GILT_DEEP = (0xC9, 0xAE, 0x74)
 OXBLOOD = ((0x84, 0x41, 0x33), (0x51, 0x25, 0x1C))
 NAVY = ((0x39, 0x4D, 0x66), (0x21, 0x2E, 0x40))
 OCHRE = ((0xB2, 0x83, 0x34), (0x74, 0x52, 0x1D))
+
+# Marbled paper palettes (base, mid, vein, gilt) in 0..1 floats
+MARBLE_FOREST = {
+    "base": (0.91, 0.90, 0.79),
+    "mid": (0.47, 0.59, 0.45),
+    "vein": (0.11, 0.25, 0.18),
+    "gilt": (0.83, 0.72, 0.42),
+}
+MARBLE_ESPRESSO = {
+    "base": (0.42, 0.38, 0.30),
+    "mid": (0.24, 0.30, 0.22),
+    "vein": (0.08, 0.14, 0.10),
+    "gilt": (0.55, 0.46, 0.28),
+}
+
+
+def _noise(res, size, seed):
+    """Smooth value noise: random lattice upscaled with bicubic interpolation."""
+    rng = np.random.default_rng(seed)
+    small = (rng.random((res, res)) * 255).astype(np.uint8)
+    img = Image.fromarray(small).resize((size, size), Image.BICUBIC)
+    return np.asarray(img, dtype=np.float64) / 255.0
+
+
+def _fbm(size, seed, octaves=4):
+    total, amp, res = np.zeros((size, size)), 0.5, 4
+    for i in range(octaves):
+        total += amp * _noise(res, size, seed + i * 101)
+        amp *= 0.5
+        res *= 2
+    return total
+
+
+def marble_field(size, palette, seed):
+    """Combed 'nonpareil' marbled paper, mirroring the in-app Swift renderer."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float64)
+    scale = 6.0 / size
+    x, y = xx * scale, yy * scale
+
+    warp1 = _fbm(size, seed)
+    warp2 = _fbm(size, seed ^ 0x9E37, octaves=3)
+    periods = size / 12.0
+    freq = periods * 2 * np.pi / 6.0
+
+    t = 0.5 + 0.5 * np.sin(y * freq + x * 1.4 + warp1 * 6.0 + warp2 * 3.0)
+    ridge = np.power(t, 0.65)
+
+    def smoothstep(a, b, v):
+        tt = np.clip((v - a) / (b - a), 0, 1)
+        return tt * tt * (3 - 2 * tt)
+
+    img = np.zeros((size, size, 3))
+    for ch in range(3):
+        c = np.full((size, size), palette["base"][ch])
+        c = c + (palette["mid"][ch] - c) * smoothstep(0.50, 0.74, ridge)
+        c = c + (palette["vein"][ch] - c) * smoothstep(0.76, 0.92, ridge)
+        gold = smoothstep(0.955, 0.99, ridge) * 0.85
+        c = c + (palette["gilt"][ch] - c) * gold
+        # Paper grain
+        grain = 0.965 + 0.07 * _noise(64, size, seed + 7)
+        img[:, :, ch] = np.clip(c * grain, 0, 1)
+
+    rgba = np.dstack([(img * 255).astype(np.uint8), np.full((size, size), 255, np.uint8)])
+    return Image.fromarray(rgba, "RGBA")
+
+
+def vignette(size, color, strength=0.4):
+    """Darken edges radially for depth."""
+    yy, xx = np.mgrid[0:size, 0:size].astype(np.float64)
+    cx = cy = (size - 1) / 2
+    dist = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2) / (size * 0.72)
+    alpha = np.clip((dist - 0.45) / 0.55, 0, 1) ** 1.6 * strength
+    rgba = np.zeros((size, size, 4), np.uint8)
+    rgba[:, :, 0] = color[0]
+    rgba[:, :, 1] = color[1]
+    rgba[:, :, 2] = color[2]
+    rgba[:, :, 3] = (alpha * 255).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA")
 
 
 def lerp(a, b, t):
@@ -139,8 +218,8 @@ def draw_books(size, scale=1.0, silhouettes=None):
 
 def icon_default(path):
     size = (1024, 1024)
-    img = vertical_gradient(size, GREEN_TOP, GREEN_BOTTOM)
-    img = cloth_texture(img)
+    field = marble_field(1024, MARBLE_FOREST, seed=19)
+    img = Image.alpha_composite(field, vignette(1024, (0x1B, 0x2C, 0x20), strength=0.45))
     gilt_frame(img, inset=64)
     books = draw_books(size, scale=1.0)
     img = Image.alpha_composite(img, books)
@@ -149,8 +228,8 @@ def icon_default(path):
 
 def icon_dark(path):
     size = (1024, 1024)
-    img = vertical_gradient(size, ESPRESSO_TOP, ESPRESSO_BOTTOM)
-    img = cloth_texture(img, alpha=5)
+    field = marble_field(1024, MARBLE_ESPRESSO, seed=42)
+    img = Image.alpha_composite(field, vignette(1024, (0x0B, 0x08, 0x05), strength=0.55))
     gilt_frame(img, inset=64, gilt=GILT_DEEP, alpha_outer=230, alpha_inner=140)
     books = draw_books(size, scale=1.0)
     img = Image.alpha_composite(img, books)

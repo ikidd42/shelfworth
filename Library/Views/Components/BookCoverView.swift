@@ -11,6 +11,15 @@ struct CoverArtView: View {
     var width: CGFloat = 120
     var height: CGFloat = 180
 
+    /// Lazily rendered marbled sheet for half-leather bindings.
+    @State private var marble: UIImage?
+
+    /// Roughly one title in three gets a half-leather marbled binding;
+    /// the rest stay full cloth. Stable per title.
+    private var marbledKind: Marbling.Kind? {
+        Marbling.kind(forTitle: title)
+    }
+
     var body: some View {
         coverContent
             .frame(width: width, height: height)
@@ -86,8 +95,19 @@ struct CoverArtView: View {
         .allowsHitTesting(false)
     }
 
-    /// Generated cloth-bound placeholder when no image is available.
+    /// Generated placeholder when no image is available: half-leather with
+    /// marbled boards for some books, full cloth for the rest.
+    @ViewBuilder
     private var placeholderCover: some View {
+        if let kind = marbledKind {
+            halfLeatherCover(kind: kind)
+        } else {
+            clothCover
+        }
+    }
+
+    /// Full cloth binding (the original look).
+    private var clothCover: some View {
         let palette = CoverPalette.forTitle(title)
         return ZStack {
             // Cloth base
@@ -115,10 +135,115 @@ struct CoverArtView: View {
             if width >= 64 {
                 fullJacket(palette: palette)
             } else {
-                monogramJacket(palette: palette)
+                monogramJacket(foil: palette.foil)
             }
         }
         .frame(width: width, height: height)
+    }
+
+    /// Half-leather binding: leather spine strip, marbled paper boards, and a
+    /// gilt-stamped leather title label — the 19th-century fine binding.
+    private func halfLeatherCover(kind: Marbling.Kind) -> some View {
+        let leather = CoverPalette.leather
+        let stripWidth = max(6, width * 0.17)
+
+        return ZStack {
+            // Leather base (visible while the marble sheet renders)
+            LinearGradient(colors: leather, startPoint: .top, endPoint: .bottom)
+
+            // Marbled boards
+            if let marble {
+                Image(uiImage: marble)
+                    .resizable()
+                    .scaledToFill()
+                    .padding(.leading, stripWidth)
+                    .transition(.opacity)
+            }
+
+            // Leather spine strip with gilt rules
+            HStack(spacing: 0) {
+                ZStack {
+                    LinearGradient(
+                        colors: [leather[0], leather[1]],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                    HStack {
+                        Spacer()
+                        Rectangle()
+                            .fill(CoverPalette.giltColor.opacity(0.65))
+                            .frame(width: 1)
+                        Rectangle()
+                            .fill(CoverPalette.giltColor.opacity(0.3))
+                            .frame(width: 1)
+                            .padding(.leading, 2)
+                    }
+                    Rectangle()
+                        .fill(.black.opacity(0.18))
+                        .frame(width: 3)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                }
+                .frame(width: stripWidth)
+                Spacer(minLength: 0)
+            }
+
+            if width >= 64 {
+                titleLabel
+                    .padding(.leading, stripWidth)
+            } else {
+                monogramJacket(foil: CoverPalette.giltColor)
+                    .padding(.leading, stripWidth)
+            }
+        }
+        .frame(width: width, height: height)
+        .clipped()
+        .task(id: "\(kind.rawValue)-\(title)-\(Int(width))x\(Int(height))") {
+            let seed = Marbling.stableSeed(title)
+            let img = await Marbling.image(
+                kind: kind, seed: seed,
+                size: CGSize(width: width - stripWidth, height: height)
+            )
+            withAnimation(.easeIn(duration: 0.3)) { marble = img }
+        }
+    }
+
+    /// Gilt-stamped leather title label pasted on the marbled board.
+    private var titleLabel: some View {
+        VStack(spacing: 0) {
+            Text(title)
+                .font(.system(size: max(10, width * 0.10), weight: .bold, design: .serif))
+                .multilineTextAlignment(.center)
+                .lineLimit(3)
+                .foregroundStyle(CoverPalette.giltColor)
+                .shadow(color: .black.opacity(0.35), radius: 1, y: 1)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Image(systemName: "diamond.fill")
+                .font(.system(size: 4))
+                .foregroundStyle(CoverPalette.giltColor.opacity(0.8))
+                .padding(.vertical, max(3, height * 0.028))
+
+            if !authors.isEmpty {
+                Text(authors)
+                    .font(.system(size: max(7.5, width * 0.068), weight: .medium, design: .serif))
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .foregroundStyle(CoverPalette.giltColor.opacity(0.85))
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, max(6, height * 0.05))
+        .background {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .fill(LinearGradient(colors: CoverPalette.leather, startPoint: .top, endPoint: .bottom))
+                .shadow(color: .black.opacity(0.4), radius: 3, y: 2)
+        }
+        .overlay {
+            RoundedRectangle(cornerRadius: 3, style: .continuous)
+                .strokeBorder(CoverPalette.giltColor.opacity(0.7), lineWidth: 1)
+                .padding(2)
+        }
+        .padding(.horizontal, 10)
     }
 
     /// Full jacket for shelf-size covers: gilt frame, title, ornament, author.
@@ -157,10 +282,10 @@ struct CoverArtView: View {
     }
 
     /// Simplified jacket for row thumbnails: a single serif initial.
-    private func monogramJacket(palette: CoverPalette) -> some View {
+    private func monogramJacket(foil: Color) -> some View {
         Text(title.prefix(1).uppercased())
             .font(.system(size: width * 0.42, weight: .bold, design: .serif))
-            .foregroundStyle(palette.foil)
+            .foregroundStyle(foil)
             .shadow(color: .black.opacity(0.25), radius: 1, y: 1)
             .padding(.leading, spineWidth)
     }
@@ -247,6 +372,12 @@ struct CoverPalette {
     }
 
     private static let gilt = rgb(0xE8D5A3)
+
+    /// Shared gilt tone for stamping on leather.
+    static let giltColor = rgb(0xE8D5A3)
+
+    /// Deep calf-leather gradient for spine strips and title labels.
+    static let leather: [Color] = [rgb(0x4A2E1E), rgb(0x2B190E)]
 
     private static let all: [CoverPalette] = [
         // Forest green cloth
