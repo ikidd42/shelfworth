@@ -15,6 +15,7 @@ struct BookDetailView: View {
     @State private var showDeleteConfirmation = false
     @State private var showEditSheet = false
     @State private var heroMarble: UIImage?
+    @Environment(\.colorScheme) private var colorScheme
 
     var body: some View {
         ScrollView {
@@ -171,7 +172,7 @@ struct BookDetailView: View {
                     Image(uiImage: heroMarble)
                         .resizable()
                         .scaledToFill()
-                        .opacity(0.22)
+                        .opacity(colorScheme == .dark ? 0.15 : 0.22)
                 }
                 LinearGradient(
                     colors: [Theme.card.opacity(0.4), Theme.card],

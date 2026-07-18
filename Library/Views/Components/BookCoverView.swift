@@ -13,8 +13,9 @@ struct CoverArtView: View {
 
     /// Lazily rendered marbled sheet for half-leather bindings.
     @State private var marble: UIImage?
+    @Environment(\.colorScheme) private var colorScheme
 
-    /// Roughly one title in three gets a half-leather marbled binding;
+    /// Roughly two titles in five get a half-leather marbled binding;
     /// the rest stay full cloth. Stable per title.
     private var marbledKind: Marbling.Kind? {
         Marbling.kind(forTitle: title)
@@ -151,11 +152,16 @@ struct CoverArtView: View {
             // Leather base (visible while the marble sheet renders)
             LinearGradient(colors: leather, startPoint: .top, endPoint: .bottom)
 
-            // Marbled boards
+            // Marbled boards (dimmed to lamplight in dark mode)
             if let marble {
                 Image(uiImage: marble)
                     .resizable()
                     .scaledToFill()
+                    .overlay {
+                        if colorScheme == .dark {
+                            CoverPalette.lamplightScrim.opacity(0.34)
+                        }
+                    }
                     .padding(.leading, stripWidth)
                     .transition(.opacity)
             }
@@ -378,6 +384,10 @@ struct CoverPalette {
 
     /// Deep calf-leather gradient for spine strips and title labels.
     static let leather: [Color] = [rgb(0x4A2E1E), rgb(0x2B190E)]
+
+    /// Warm dark scrim laid over marbled boards in dark mode, so the paper
+    /// reads as lit by lamplight rather than glaring against the espresso UI.
+    static let lamplightScrim = Color(red: 0.10, green: 0.07, blue: 0.045)
 
     private static let all: [CoverPalette] = [
         // Forest green cloth

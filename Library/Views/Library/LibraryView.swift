@@ -398,6 +398,7 @@ struct LibraryView: View {
     // MARK: - Empty State
 
     @State private var emptyMarble: UIImage?
+    @Environment(\.colorScheme) private var colorScheme
 
     private var emptyLibraryView: some View {
         VStack(spacing: 20) {
@@ -465,6 +466,11 @@ struct LibraryView: View {
                     Image(uiImage: emptyMarble)
                         .resizable()
                         .scaledToFill()
+                        .overlay {
+                            if colorScheme == .dark {
+                                CoverPalette.lamplightScrim.opacity(0.34)
+                            }
+                        }
                         .clipShape(RoundedRectangle(cornerRadius: 3, style: .continuous))
                 }
             }
