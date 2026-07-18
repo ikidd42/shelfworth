@@ -118,6 +118,10 @@ extension UIColor {
 // MARK: - Reusable styles & components
 
 /// Raised paper card: fill, hairline border, soft ambient shadow.
+///
+/// The foot of the card carries a 19th-century gilt page-edge: the border
+/// warms to gold along the bottom edge, and two gilt hairlines peek out
+/// beneath like the gilded edges of pages stacked under the top sheet.
 struct CardStyle: ViewModifier {
     var radius: CGFloat = 16
     var padding: CGFloat = 16
@@ -129,7 +133,32 @@ struct CardStyle: ViewModifier {
             .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
             .overlay {
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(Theme.rule.opacity(0.8), lineWidth: 1)
+                    .strokeBorder(
+                        LinearGradient(
+                            stops: [
+                                .init(color: Theme.rule.opacity(0.8), location: 0),
+                                .init(color: Theme.rule.opacity(0.8), location: 0.70),
+                                .init(color: Theme.brass.opacity(0.45), location: 0.90),
+                                .init(color: Theme.brass.opacity(0.70), location: 1)
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        ),
+                        lineWidth: 1
+                    )
+            }
+            .background {
+                // Gilt page block beneath the top sheet
+                ZStack(alignment: .bottom) {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .stroke(Theme.brass.opacity(0.38), lineWidth: 1)
+                        .padding(.horizontal, 6)
+                        .offset(y: 3)
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .stroke(Theme.brass.opacity(0.20), lineWidth: 1)
+                        .padding(.horizontal, 12)
+                        .offset(y: 6)
+                }
             }
             .shadow(color: .black.opacity(0.06), radius: 14, x: 0, y: 6)
     }
