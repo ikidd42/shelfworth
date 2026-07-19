@@ -50,7 +50,7 @@ struct ShareResultView: View {
                 .padding(.top, 22)
 
                 if success {
-                    Text("Open Library to see your Watchlist and track prices.")
+                    Text("Open Shelfworth to see your Watchlist and track prices.")
                         .font(.caption)
                         .foregroundStyle(SharePalette.inkTertiary)
                         .multilineTextAlignment(.center)

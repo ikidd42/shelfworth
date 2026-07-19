@@ -29,7 +29,7 @@
                                             <constraint firstAttribute="height" constant="360" id="fG6-bY-3pQ"/>
                                         </constraints>
                                     </imageView>
-                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="L I B R A R Y" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gH7-cZ-4qR">
+                                    <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="S H E L F W O R T H" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="gH7-cZ-4qR">
                                         <rect key="frame" x="65" y="388" width="110.5" height="10"/>
                                         <fontDescription key="fontDescription" name="Georgia" family="Georgia" pointSize="15"/>
                                         <color key="textColor" name="LaunchInk"/>

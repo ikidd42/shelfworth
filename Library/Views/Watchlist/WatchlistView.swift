@@ -182,7 +182,7 @@ struct WatchlistView: View {
             Text("Nothing on the radar")
                 .font(Theme.display(26))
 
-            Text("Share an eBay listing to Library, or search\nfor a book to track its price.")
+            Text("Share an eBay listing to Shelfworth, or search\nfor a book to track its price.")
                 .font(.subheadline)
                 .foregroundStyle(Theme.inkSecondary)
                 .multilineTextAlignment(.center)
