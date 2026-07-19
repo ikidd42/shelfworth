@@ -16,6 +16,9 @@
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFill" image="LaunchEndpaper" translatesAutoresizingMaskIntoConstraints="NO" id="mK2-ep-8vW">
+                                <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
+                            </imageView>
                             <stackView opaque="NO" contentMode="scaleToFill" axis="vertical" alignment="center" spacing="28" translatesAutoresizingMaskIntoConstraints="NO" id="aB3-xY-9kL">
                                 <rect key="frame" x="76.5" y="313" width="240" height="398"/>
                                 <subviews>
@@ -38,6 +41,10 @@
                         <viewLayoutGuide key="safeArea" id="6Tk-OE-BBY"/>
                         <color key="backgroundColor" name="LaunchBackground"/>
                         <constraints>
+                            <constraint firstItem="mK2-ep-8vW" firstAttribute="top" secondItem="Ze5-6b-2t3" secondAttribute="top" id="nL3-ep-1aA"/>
+                            <constraint firstItem="mK2-ep-8vW" firstAttribute="bottom" secondItem="Ze5-6b-2t3" secondAttribute="bottom" id="oM4-ep-2bB"/>
+                            <constraint firstItem="mK2-ep-8vW" firstAttribute="leading" secondItem="Ze5-6b-2t3" secondAttribute="leading" id="pN5-ep-3cC"/>
+                            <constraint firstItem="mK2-ep-8vW" firstAttribute="trailing" secondItem="Ze5-6b-2t3" secondAttribute="trailing" id="qO6-ep-4dD"/>
                             <constraint firstItem="aB3-xY-9kL" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="hI8-dA-5rS"/>
                             <constraint firstItem="aB3-xY-9kL" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" constant="-40" id="iJ9-eB-6sT"/>
                         </constraints>
@@ -49,6 +56,7 @@
         </scene>
     </scenes>
     <resources>
+        <image name="LaunchEndpaper" width="645" height="1398"/>
         <image name="LaunchMotif" width="360" height="540"/>
         <namedColor name="LaunchBackground">
             <color red="0.965" green="0.941" blue="0.894" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
