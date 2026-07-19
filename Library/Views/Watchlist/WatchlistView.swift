@@ -30,6 +30,11 @@ struct WatchlistView: View {
                 }
                 .padding()
                 .padding(.bottom, 12)
+                // A vertical ScrollView is only greedy along its scroll axis:
+                // when every child above is conditional and absent, the content
+                // width collapses to the padding, taking the background and the
+                // empty-state overlay's layout proposal with it.
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .background(Theme.canvas.ignoresSafeArea())
             .navigationTitle("Watchlist")
