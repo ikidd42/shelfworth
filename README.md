@@ -1,5 +1,7 @@
 # Library
 
+![CI](https://github.com/ikidd42/library-ios/actions/workflows/ci.yml/badge.svg)
+
 An iOS app for cataloging a personal book collection and tracking what your books are worth on eBay.
 
 Point your camera at a barcode (or snap a photo of a title page), and the app looks the book up, downloads its cover and metadata, and tracks its lowest current eBay price over time. Share an eBay listing straight into the app to watch a book you don't own yet.

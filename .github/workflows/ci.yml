@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Build and test
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Pick a simulator
+        id: sim
+        run: |
+          DEVICE=$(xcrun simctl list devices available -j | python3 -c "
+          import json, sys
+          devices = json.load(sys.stdin)['devices']
+          names = [d['name'] for runtime, devs in devices.items()
+                   if 'iOS' in runtime for d in devs]
+          print(next(n for n in names if n.startswith('iPhone')))
+          ")
+          echo "Using simulator: $DEVICE"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+
+      - name: Run tests
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project Library.xcodeproj \
+            -scheme Library \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee xcodebuild.log | grep -E "Test case|Test Suite|error:|warning:|\*\* TEST" || true
+          grep -q "\*\* TEST SUCCEEDED \*\*" xcodebuild.log
+
+      - name: Upload log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: xcodebuild-log
+          path: xcodebuild.log
