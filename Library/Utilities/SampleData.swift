@@ -78,9 +78,27 @@ enum SampleData {
             categories: "Classics", readingStatus: .read
         )
         austen.rating = 5
-        austen.coverImageData = syntheticCover()
+        austen.coverImageData = syntheticCover(
+            title: "Pride and\nPrejudice", author: "JANE AUSTEN",
+            base: UIColor(red: 0.13, green: 0.32, blue: 0.42, alpha: 1),
+            accent: UIColor(red: 0.76, green: 0.44, blue: 0.28, alpha: 1),
+            band: UIColor(red: 0.92, green: 0.86, blue: 0.72, alpha: 1)
+        )
         austen.dateStartedReading = daysAgo(200)
         austen.dateFinishedReading = daysAgo(170)
+
+        dune.coverImageData = syntheticCover(
+            title: "DUNE", author: "FRANK HERBERT",
+            base: UIColor(red: 0.55, green: 0.25, blue: 0.13, alpha: 1),
+            accent: UIColor(red: 0.93, green: 0.75, blue: 0.36, alpha: 1),
+            band: UIColor(red: 0.95, green: 0.88, blue: 0.70, alpha: 1)
+        )
+        orwell.coverImageData = syntheticCover(
+            title: "1984", author: "GEORGE ORWELL",
+            base: UIColor(red: 0.16, green: 0.16, blue: 0.17, alpha: 1),
+            accent: UIColor(red: 0.80, green: 0.22, blue: 0.16, alpha: 1),
+            band: UIColor(red: 0.86, green: 0.84, blue: 0.80, alpha: 1)
+        )
 
         let rothfuss = Book(
             title: "The Name of the Wind", authors: "Patrick Rothfuss",
@@ -126,18 +144,41 @@ enum SampleData {
         context.insert(watchedKing)
     }
 
-    /// A simple painted cover so demo data exercises the cover-art paths
-    /// (thumbnailing, ink-matched endpapers) without bundling an image.
-    private static func syntheticCover() -> Data? {
+    /// Painted covers with real title text so demo data exercises the
+    /// cover-art paths (thumbnailing, ink-matched endpapers) and screenshots
+    /// show a believable mix of jacketed and marbled volumes.
+    private static func syntheticCover(title: String, author: String,
+                                       base: UIColor, accent: UIColor,
+                                       band: UIColor) -> Data? {
         let size = CGSize(width: 600, height: 900)
         let renderer = UIGraphicsImageRenderer(size: size)
         let image = renderer.image { ctx in
-            UIColor(red: 0.13, green: 0.32, blue: 0.42, alpha: 1).setFill()   // deep teal
+            base.setFill()
             ctx.fill(CGRect(origin: .zero, size: size))
-            UIColor(red: 0.92, green: 0.86, blue: 0.72, alpha: 1).setFill()   // cream band
-            ctx.fill(CGRect(x: 0, y: 330, width: 600, height: 240))
-            UIColor(red: 0.76, green: 0.44, blue: 0.28, alpha: 1).setFill()   // terracotta sun
-            ctx.cgContext.fillEllipse(in: CGRect(x: 210, y: 90, width: 180, height: 180))
+            accent.setFill()
+            ctx.cgContext.fillEllipse(in: CGRect(x: 225, y: 110, width: 150, height: 150))
+            band.setFill()
+            ctx.fill(CGRect(x: 0, y: 700, width: 600, height: 110))
+
+            let center = NSMutableParagraphStyle()
+            center.alignment = .center
+            (title as NSString).draw(
+                in: CGRect(x: 40, y: 360, width: 520, height: 280),
+                withAttributes: [
+                    .font: UIFont(name: "Georgia-Bold", size: 72)
+                        ?? .systemFont(ofSize: 72, weight: .bold),
+                    .foregroundColor: UIColor.white,
+                    .paragraphStyle: center
+                ]
+            )
+            (author as NSString).draw(
+                in: CGRect(x: 40, y: 730, width: 520, height: 56),
+                withAttributes: [
+                    .font: UIFont(name: "Georgia", size: 30) ?? .systemFont(ofSize: 30),
+                    .foregroundColor: base,
+                    .paragraphStyle: center
+                ]
+            )
         }
         return image.jpegData(compressionQuality: 0.85)
     }

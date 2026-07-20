@@ -8,7 +8,7 @@ struct ShareToWatchlistTip: Tip {
     }
 
     var message: Text? {
-        Text("Share any eBay listing to Library from Safari or the eBay app and it appears here with price tracking.")
+        Text("Share any eBay listing to Shelfworth from Safari or the eBay app and it appears here with price tracking.")
     }
 
     var image: Image? {

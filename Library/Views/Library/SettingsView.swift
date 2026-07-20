@@ -149,7 +149,7 @@ struct SettingsView: View {
                     HStack {
                         Text("App")
                         Spacer()
-                        Text("LibraryApp v1.0")
+                        Text("Shelfworth v1.0")
                             .foregroundStyle(.secondary)
                     }
                     HStack {

@@ -424,6 +424,7 @@
 				DEVELOPMENT_TEAM = NU85WN366H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Shelfworth;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Library uses the camera to scan ISBN barcodes and photograph book covers and title pages.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Library uses your photo library to choose existing photos of book covers.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -459,6 +460,7 @@
 				DEVELOPMENT_TEAM = NU85WN366H;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Shelfworth;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Library uses the camera to scan ISBN barcodes and photograph book covers and title pages.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Library uses your photo library to choose existing photos of book covers.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -492,7 +494,7 @@
 				DEVELOPMENT_TEAM = NU85WN366H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LibraryShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LibraryShareExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = Shelfworth;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -521,7 +523,7 @@
 				DEVELOPMENT_TEAM = NU85WN366H;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LibraryShareExtension/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LibraryShareExtension;
+				INFOPLIST_KEY_CFBundleDisplayName = Shelfworth;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
